@@ -1,4 +1,3 @@
-//
 // Copyright 2021 gRPC authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,27 +11,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-#include <grpc/grpc.h>
-#include <grpc/support/log.h>
-#include <gtest/gtest.h>
+#ifndef GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_CHANNEL_CREATE_IMPL_H
+#define GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_CHANNEL_CREATE_IMPL_H
 
-#include "test/core/util/test_config.h"
+#include <grpc/impl/codegen/port_platform.h>
 
-namespace grpc_core {
-namespace testing {
-namespace {
-TEST(SmokeTest, Empty) { gpr_log(GPR_INFO, __func__); }
-}  // namespace
-}  // namespace testing
-}  // namespace grpc_core
+#include "src/core/ext/transport/binder/wire_format/binder.h"
+#include "src/core/lib/channel/channel_args.h"
 
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  grpc::testing::TestEnvironment env(argc, argv);
-  grpc_init();
-  int ret = RUN_ALL_TESTS();
-  grpc_shutdown();
-  return ret;
-}
+namespace grpc {
+namespace internal {
+
+grpc_channel* CreateChannelFromBinderImpl(
+    std::unique_ptr<grpc_binder::Binder> endpoint_binder,
+    const grpc_channel_args* args);
+
+}  // namespace internal
+}  // namespace grpc
+
+#endif  // GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_CHANNEL_CREATE_IMPL_H
