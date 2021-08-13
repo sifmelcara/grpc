@@ -15,16 +15,20 @@
 
 #include <android/log.h>
 #include <jni.h>
+#include "src/core/ext/transport/binder/client/channel_create.h"
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_io_grpc_binder_cpp_example_ButtonPressHandler_native_1entry(
-    JNIEnv* env, jobject /*this*/, jobject /*application*/) {
+    JNIEnv* env, jobject /*this*/, jobject application) {
   static bool first = true;
   __android_log_print(ANDROID_LOG_INFO, "Demo", "Line number %d", __LINE__);
   if (first) {
     first = false;
+    grpc::experimental::BindToOnDeviceServerService(env, application, "", "");
     return env->NewStringUTF("Clicked 1 time");
   } else {
+    // Create a channel. For now we only want to make sure it compiles.
+    auto channel = grpc::experimental::CreateBinderChannel(env, application, "", "");
     return env->NewStringUTF("Clicked more than 1 time");
   }
 }
