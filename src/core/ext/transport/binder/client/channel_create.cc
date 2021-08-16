@@ -45,10 +45,11 @@ namespace experimental {
 
 // This should be called before calling CreateBinderChannel
 // TODO(mingcl): Pass package_name and class_name down to connection helper
-// TODO(mingcl): Invoke a callback and pass binder object to caller after a successful bind
-void BindToOnDeviceServerService(
-    void* jni_env_void, jobject application, absl::string_view /*package_name*/,
-    absl::string_view /*class_name*/
+// TODO(mingcl): Invoke a callback and pass binder object to caller after a
+// successful bind
+void BindToOnDeviceServerService(void* jni_env_void, jobject application,
+                                 absl::string_view /*package_name*/,
+                                 absl::string_view /*class_name*/
 ) {
   // Init gRPC library first so gpr_log works
   grpc::internal::GrpcLibrary init_lib;
@@ -66,11 +67,12 @@ void BindToOnDeviceServerService(
 }
 
 // BindToOndeviceServerService need to be called before this, in a different
-// task (due to Android API design). (Reference: https://stackoverflow.com/a/3055749)
+// task (due to Android API design). (Reference:
+// https://stackoverflow.com/a/3055749)
 // TODO(mingcl): Support multiple endpoint binder objects
 std::shared_ptr<grpc::Channel> CreateBinderChannel(
-    void* jni_env_void, jobject /*application*/, absl::string_view /*package_name*/,
-    absl::string_view /*class_name*/) {
+    void* jni_env_void, jobject /*application*/,
+    absl::string_view /*package_name*/, absl::string_view /*class_name*/) {
   JNIEnv* jni_env = (JNIEnv*)jni_env_void;
 
   // clang-format off
