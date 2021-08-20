@@ -18,7 +18,6 @@ licenses(["notice"])
 
 grpc_package(name = "test/core/transport/binder/end2end")
 
-
 package(
     default_visibility = ["//visibility:public"],
 )

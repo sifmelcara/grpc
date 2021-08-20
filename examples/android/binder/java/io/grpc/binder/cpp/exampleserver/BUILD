@@ -28,7 +28,7 @@ cc_library(
         # Temporarily directly depend on this target before we expose a public API
         "//src/core/ext/transport/binder/server:grpc_transport_binder_server",
         "//:grpc++",
-        "//test/core/transport/binder/end2end:echo_service"
+        "//test/core/transport/binder/end2end:echo_service",
     ],
     alwayslink = True,
 )
@@ -36,17 +36,16 @@ cc_library(
 android_library(
     name = "activity",
     srcs = [
-        "MainActivity.java",
         "ButtonPressHandler.java",
+        "MainActivity.java",
     ],
     manifest = "AndroidManifest.xml",
     resource_files = glob(["res/**"]),
     deps = [
-        ":jni_lib",
         ":endpoint",
+        ":jni_lib",
     ],
 )
-
 
 android_library(
     name = "endpoint",
@@ -54,7 +53,7 @@ android_library(
     exports_manifest = True,
     manifest = "AndroidManifest_endpoint.xml",
     deps = [
-      # "@androidsdk//com.android.service"
+        # "@androidsdk//com.android.service"
     ],
 )
 
@@ -65,4 +64,3 @@ android_binary(
         ":activity",
     ],
 )
-
