@@ -14,7 +14,10 @@
 
 #include <android/log.h>
 #include <jni.h>
+#include "test/core/transport/binder/end2end/echo_service.h"
 #include "src/core/ext/transport/binder/client/channel_create.h"
+
+using namespace grpc_binder::end2end_testing;
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_io_grpc_binder_cpp_example_ButtonPressHandler_native_1entry(
@@ -29,6 +32,15 @@ Java_io_grpc_binder_cpp_example_ButtonPressHandler_native_1entry(
     // Create a channel. For now we only want to make sure it compiles.
     auto channel =
         grpc::experimental::CreateBinderChannel(env, application, "", "");
-    return env->NewStringUTF("Clicked more than 1 time");
+    auto stub = EchoService::NewStub(channel);
+    grpc::ClientContext context;
+    EchoRequest request;
+    EchoResponse response;
+    request.set_text("it works!");
+    grpc::Status status = stub->EchoUnaryCall(&context, request, &response);
+    if (status.ok()) {
+      return env->NewStringUTF(response.text().c_str());
+    }
+    return env->NewStringUTF("Clicked more than 1 time. Status not ok");
   }
 }

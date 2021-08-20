@@ -18,6 +18,11 @@ licenses(["notice"])
 
 grpc_package(name = "test/core/transport/binder/end2end")
 
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
 grpc_cc_library(
     name = "fake_binder",
     srcs = ["fake_binder.cc"],

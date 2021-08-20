@@ -1,11 +1,11 @@
-package io.grpc.binder.cpp.example;
+package io.grpc.binder.cpp.exampleserver;
 
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
-import io.grpc.binder.cpp.example.R;
+import io.grpc.binder.cpp.exampleserver.R;
 
 /** Main class for the example app. */
 public class MainActivity extends Activity {

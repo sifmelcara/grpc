@@ -51,7 +51,10 @@ public class SyncServiceConnection implements ServiceConnection {
       // TODO(mingcl): The component name is currently hard-coded here and should be changed
       // manually before compile. We should pump the component name from C++ to here instead after
       // we have a server ready for integration test.
-      ComponentName compName = new ComponentName("redacted", "redacted");
+      ComponentName compName =
+          new ComponentName(
+              "io.grpc.binder.cpp.exampleserver",
+              "io.grpc.binder.cpp.exampleserver.ExportedEndpointService");
       intent.setComponent(compName);
       // Will return true if the system is in the process of bringing up a service that your client
       // has permission to bind to; false if the system couldn't find the service or if your client
