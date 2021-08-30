@@ -16,7 +16,7 @@
 
 #include "src/core/ext/transport/binder/wire_format/binder_android.h"
 
-#if defined(ANDROID) || defined(__ANDROID__)
+#ifdef GPR_SUPPORT_BINDER_TRANSPORT
 
 #include <grpc/support/log.h>
 
@@ -250,4 +250,4 @@ absl::Status ReadableParcelAndroid::ReadString(char data[111]) const {
 
 }  // namespace grpc_binder
 
-#endif  // defined(ANDROID) || defined(__ANDROID__)
+#endif  // GPR_SUPPORT_BINDER_TRANSPORT

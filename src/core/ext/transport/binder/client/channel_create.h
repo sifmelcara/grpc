@@ -15,16 +15,16 @@
 #ifndef GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_CHANNEL_CREATE_H
 #define GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_CHANNEL_CREATE_H
 
-#if defined(ANDROID) || defined(__ANDROID__)
-
 #include <grpc/impl/codegen/port_platform.h>
 
 #include <grpc/impl/codegen/grpc_types.h>
 #include <grpc/support/port_platform.h>
 #include <grpcpp/channel.h>
-#include <jni.h>
-
 #include "absl/strings/string_view.h"
+
+#ifdef GPR_ANDROID
+
+#include <jni.h>
 
 namespace grpc {
 namespace experimental {
