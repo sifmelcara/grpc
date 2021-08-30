@@ -4577,6 +4577,7 @@ targets:
   headers:
   - src/core/ext/transport/binder/transport/binder_stream.h
   - src/core/ext/transport/binder/transport/binder_transport.h
+  - src/core/ext/transport/binder/utils/check_binder_api.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver_impl.h
   - src/core/ext/transport/binder/wire_format/binder.h
@@ -5364,6 +5365,7 @@ targets:
   headers:
   - src/core/ext/transport/binder/transport/binder_stream.h
   - src/core/ext/transport/binder/transport/binder_transport.h
+  - src/core/ext/transport/binder/utils/check_binder_api.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver_impl.h
   - src/core/ext/transport/binder/wire_format/binder.h
@@ -5523,6 +5525,7 @@ targets:
   build: test
   language: c++
   headers:
+  - src/core/ext/transport/binder/utils/check_binder_api.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver_impl.h
   - src/core/ext/transport/binder/wire_format/binder.h
@@ -7561,6 +7564,7 @@ targets:
   build: test
   language: c++
   headers:
+  - src/core/ext/transport/binder/utils/check_binder_api.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver_impl.h
   - src/core/ext/transport/binder/wire_format/binder.h
@@ -7586,6 +7590,7 @@ targets:
   build: test
   language: c++
   headers:
+  - src/core/ext/transport/binder/utils/check_binder_api.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver.h
   - src/core/ext/transport/binder/utils/transport_stream_receiver_impl.h
   - src/core/ext/transport/binder/wire_format/binder.h

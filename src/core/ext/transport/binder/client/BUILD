@@ -50,6 +50,7 @@ grpc_cc_library(
         "//:grpc_base_c",
         "//:grpc_codegen",
         "//src/core/ext/transport/binder/transport:binder_transport",
+        "//src/core/ext/transport/binder/utils:check_binder_api",
         "//src/core/ext/transport/binder/utils:transport_stream_receiver",
         "//src/core/ext/transport/binder/wire_format:binder_android",
         "//src/core/ext/transport/binder/wire_format:wire_reader",

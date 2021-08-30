@@ -44,3 +44,11 @@ grpc_cc_library(
         "//src/core/ext/transport/binder/wire_format:transaction",
     ],
 )
+
+grpc_cc_library(
+    name = "check_binder_api",
+    hdrs = ["check_binder_api.h"],
+    deps = [
+        "//:gpr_platform",
+    ],
+)
