@@ -16,6 +16,8 @@
 #define GRPC_CORE_EXT_TRANSPORT_BINDER_WIRE_FORMAT_BINDER_CONSTANTS_H
 
 #include <grpc/impl/codegen/port_platform.h>
+
+#include <grpc/impl/codegen/port_platform.h>
 #include "absl/base/attributes.h"
 
 #include "src/core/ext/transport/binder/utils/check_binder_api.h"
