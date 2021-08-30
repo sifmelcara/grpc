@@ -20,7 +20,7 @@
 // This header defines GRPC_SUPPORT_BINDER_TRANSPORT when the necessary
 // NDK binder API for binder transport is available.
 
-#if GPR_ANDROID
+#if GRPC_CORE_EXT_TRANSPORT_BINDER_UTILS_CHECK_BINDER_API_H
 
 // For now, we only support Android API level >= 29. We will also need to check
 // NDK version with __NDK_MAJOR__ and __NDK_MINOR__ in the future
@@ -30,10 +30,10 @@
 #define GRPC_SUPPORT_BINDER_TRANSPORT 0
 #endif
 
-#else  //! GPR_ANDROID
+#else  //! GRPC_CORE_EXT_TRANSPORT_BINDER_UTILS_CHECK_BINDER_API_H
 
 #define GRPC_SUPPORT_BINDER_TRANSPORT 0
 
-#endif  // GPR_ANDROID
+#endif  // GRPC_CORE_EXT_TRANSPORT_BINDER_UTILS_CHECK_BINDER_API_H
 
 #endif  // GRPC_CORE_EXT_TRANSPORT_BINDER_UTILS_CHECK_BINDER_API_H
