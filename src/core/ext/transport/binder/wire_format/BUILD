@@ -59,6 +59,7 @@ grpc_cc_library(
         "//:gpr",
         "//:gpr_platform",
         "//:orphanable",
+        "//src/core/ext/transport/binder/utils:check_binder_api",
     ],
 )
 
@@ -78,6 +79,7 @@ grpc_cc_library(
         ":binder",
         ":wire_reader",
         "//:gpr_platform",
+        "//src/core/ext/transport/binder/utils:check_binder_api",
     ],
 )
 

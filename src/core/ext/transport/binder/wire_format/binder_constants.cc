@@ -16,12 +16,13 @@
 
 #include "src/core/ext/transport/binder/wire_format/binder_constants.h"
 
-#if !(defined(ANDROID) || defined(__ANDROID__))
+#include "src/core/ext/transport/binder/utils/check_binder_api.h"
+#if !GRPC_SUPPORT_BINDER_TRANSPORT
 
 const int FIRST_CALL_TRANSACTION = 0x00000001;
 const int LAST_CALL_TRANSACTION = 0x00FFFFFF;
 
-#endif  // !(defined(ANDROID) || defined(__ANDROID__))
+#endif  // !GRPC_SUPPORT_BINDER_TRANSPORT
 
 namespace grpc_binder {
 
