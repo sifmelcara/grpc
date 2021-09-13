@@ -80,7 +80,7 @@ class ReadableParcel {
 class TransactionReceiver : public HasRawBinder {
  public:
   using OnTransactCb =
-      std::function<absl::Status(transaction_code_t, const ReadableParcel*)>;
+      std::function<absl::Status(transaction_code_t, const ReadableParcel*, int uid)>;
 
   ~TransactionReceiver() override = default;
 };

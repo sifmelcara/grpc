@@ -188,7 +188,8 @@ class PersistentFakeTransactionReceiver {
 
   absl::Status Receive(BinderTransportTxCode tx_code,
                        const ReadableParcel* parcel) {
-    return callback_(static_cast<transaction_code_t>(tx_code), parcel);
+    return callback_(static_cast<transaction_code_t>(tx_code), parcel,
+                     /*uid=*/0);
   }
 
  private:
