@@ -125,7 +125,8 @@ void WireReaderImpl::SendSetupTransport(Binder* binder) {
   // callback owns a Ref() when it's being invoked.
   tx_receiver_ = binder->ConstructTxReceiver(
       /*wire_reader_ref=*/Ref(),
-      [this](transaction_code_t code, const ReadableParcel* readable_parcel, int uid) {
+      [this](transaction_code_t code, const ReadableParcel* readable_parcel,
+             int uid) {
         return this->ProcessTransaction(code, readable_parcel, uid);
       });
 
@@ -146,7 +147,8 @@ std::unique_ptr<Binder> WireReaderImpl::RecvSetupTransport() {
 }
 
 absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
-                                                const ReadableParcel* parcel, int uid) {
+                                                const ReadableParcel* parcel,
+                                                int uid) {
   gpr_log(GPR_INFO, __func__);
   gpr_log(GPR_INFO, "tx code = %u", code);
   if (code >= static_cast<unsigned>(kFirstCallId)) {
