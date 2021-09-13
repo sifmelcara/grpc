@@ -98,10 +98,11 @@ class BinderServerListener : public Server::ListenerInterface {
 
   void Start(Server* /*server*/,
              const std::vector<grpc_pollset*>* /*pollsets*/) override {
-    tx_receiver_ = factory_([this](transaction_code_t code,
-                                   const grpc_binder::ReadableParcel* parcel, int uid) {
-      return OnSetupTransport(code, parcel, uid);
-    });
+    tx_receiver_ =
+        factory_([this](transaction_code_t code,
+                        const grpc_binder::ReadableParcel* parcel, int uid) {
+          return OnSetupTransport(code, parcel, uid);
+        });
     endpoint_binder_ = tx_receiver_->GetRawBinder();
     grpc_add_endpoint_binder(addr_, endpoint_binder_);
   }
@@ -127,7 +128,8 @@ class BinderServerListener : public Server::ListenerInterface {
 
  private:
   absl::Status OnSetupTransport(transaction_code_t code,
-                                const grpc_binder::ReadableParcel* parcel, int uid) {
+                                const grpc_binder::ReadableParcel* parcel,
+                                int uid) {
     grpc_core::ExecCtx exec_ctx;
     if (grpc_binder::BinderTransportTxCode(code) !=
         grpc_binder::BinderTransportTxCode::SETUP_TRANSPORT) {
