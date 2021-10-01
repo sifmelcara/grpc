@@ -100,7 +100,8 @@ class BinderConnector : public grpc_core::SubchannelConnector {
 class BinderClientChannelFactory : public grpc_core::ClientChannelFactory {
  public:
   grpc_core::RefCountedPtr<grpc_core::Subchannel> CreateSubchannel(
-      const grpc_resolved_address& address, const grpc_channel_args* args) override {
+      const grpc_resolved_address& address,
+      const grpc_channel_args* args) override {
     gpr_log(GPR_ERROR, "BinderClientChannelFactory::CreateSubchannel called");
     grpc_arg default_authority_arg = grpc_channel_arg_string_create(
         const_cast<char*>(GRPC_ARG_DEFAULT_AUTHORITY),
