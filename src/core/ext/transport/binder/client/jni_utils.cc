@@ -36,10 +36,9 @@ void CallStaticJavaMethod(JNIEnv* env, const std::string& clazz,
     gpr_log(GPR_ERROR, "No method id %s", method.c_str());
   }
 
-  env->CallStaticVoidMethod(cl, mid, application,
-                            env->NewStringUTF(pkg.c_str()),
-                            env->NewStringUTF(cls.c_str()),
-                            env->NewStringUTF(conn_id.c_str()));
+  env->CallStaticVoidMethod(
+      cl, mid, application, env->NewStringUTF(pkg.c_str()),
+      env->NewStringUTF(cls.c_str()), env->NewStringUTF(conn_id.c_str()));
 }
 
 jobject CallStaticJavaMethodForObject(JNIEnv* env, const std::string& clazz,
