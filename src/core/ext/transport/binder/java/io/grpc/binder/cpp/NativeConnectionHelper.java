@@ -33,9 +33,7 @@ final class NativeConnectionHelper {
   // TODO(mingcl): We should notify C++ once we got the service binder so they don't need to call
   // this function to check. For now we assume that this function will only be called after
   // successful connection
-  static IBinder getServiceBinder() {
-    return s.getIBinder();
-  }
+  static IBinder getServiceBinder() { return s.getIBinder(); }
 
   static Parcel getEmptyParcel() {
     return Parcel.obtain();

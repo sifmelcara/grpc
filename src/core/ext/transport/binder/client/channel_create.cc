@@ -55,64 +55,38 @@
 namespace grpc {
 namespace experimental {
 
-// This should be called before calling CreateBinderChannel
-// TODO(mingcl): Invoke a callback and pass binder object to caller after a
-// successful bind
-void BindToOnDeviceServerService(void* jni_env_void, jobject application,
-                                 absl::string_view package_name,
-                                 absl::string_view class_name) {
-  // Init gRPC library first so gpr_log works
+// TODO: Do we need to patch internal user first?
+
+// TODO: Add notes about channel connectivity
+// TODO(mingcl): Support multiple endpoint binder objects
+std::shared_ptr<grpc::Channel> CreateBinderChannel(
+    void* jni_env, jobject application, absl::string_view package_name,
+    absl::string_view class_name) {
   grpc::internal::GrpcLibrary init_lib;
   init_lib.init();
+  return CreateCustomBinderChannel(jni_env, application, package_name,
+                                   class_name, ChannelArguments());
+}
 
-  JNIEnv* jni_env = static_cast<JNIEnv*>(jni_env_void);
-
+// TODO(mingcl): Support multiple endpoint binder objects
+std::shared_ptr<grpc::Channel> CreateCustomBinderChannel(
+    void* jni_env, jobject application, absl::string_view package_name,
+    absl::string_view class_name, const ChannelArguments& args) {
+  grpc::internal::GrpcLibrary init_lib;
+  init_lib.init();
+  grpc_channel_args channel_args;
+  args.SetChannelArgs(&channel_args);
+  // TODO: Maybe delay this until subchannel is establishing connection
   // clang-format off
-  grpc_binder::CallStaticJavaMethod(jni_env,
+  grpc_binder::CallStaticJavaMethod(static_cast<JNIEnv*>(jni_env),
                        "io/grpc/binder/cpp/NativeConnectionHelper",
                        "tryEstablishConnection",
                        "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V",
                        application, std::string(package_name), std::string(class_name));
   // clang-format on
-}
-
-// BindToOndeviceServerService need to be called before this, in a different
-// task (due to Android API design). (Reference:
-// https://stackoverflow.com/a/3055749)
-// TODO(mingcl): Support multiple endpoint binder objects
-std::shared_ptr<grpc::Channel> CreateBinderChannel(
-    void* jni_env_void, jobject application, absl::string_view package_name,
-    absl::string_view class_name) {
-  return CreateCustomBinderChannel(jni_env_void, application, package_name,
-                                   class_name, ChannelArguments());
-}
-
-// BindToOndeviceServerService need to be called before this, in a different
-// task (due to Android API design). (Reference:
-// https://stackoverflow.com/a/3055749)
-// TODO(mingcl): Support multiple endpoint binder objects
-std::shared_ptr<grpc::Channel> CreateCustomBinderChannel(
-    void* jni_env_void, jobject /*application*/,
-    absl::string_view /*package_name*/, absl::string_view /*class_name*/,
-    const ChannelArguments& args) {
-  JNIEnv* jni_env = static_cast<JNIEnv*>(jni_env_void);
-
-  // clang-format off
-  jobject object = grpc_binder::CallStaticJavaMethodForObject(
-      jni_env,
-      "io/grpc/binder/cpp/NativeConnectionHelper",
-      "getServiceBinder",
-      "()Landroid/os/IBinder;");
-  // clang-format on
-
-  grpc_channel_args channel_args;
-  args.SetChannelArgs(&channel_args);
   return CreateChannelInternal(
-      "",
-      ::grpc::internal::CreateChannelFromBinderImpl(
-          absl::make_unique<grpc_binder::BinderAndroid>(
-              grpc_binder::FromJavaBinder(jni_env, object)),
-          &channel_args),
+      /*host=*/std::string(package_name),
+      ::grpc::internal::CreateClientBinderChannelImpl(&channel_args),
       std::vector<
           std::unique_ptr<experimental::ClientInterceptorFactoryInterface>>());
 }
@@ -124,11 +98,6 @@ std::shared_ptr<grpc::Channel> CreateCustomBinderChannel(
 
 namespace grpc {
 namespace experimental {
-
-void BindToOnDeviceServerService(void*, jobject, absl::string_view,
-                                 absl::string_view) {
-  GPR_ASSERT(0);
-}
 
 std::shared_ptr<grpc::Channel> CreateBinderChannel(void*, jobject,
                                                    absl::string_view,

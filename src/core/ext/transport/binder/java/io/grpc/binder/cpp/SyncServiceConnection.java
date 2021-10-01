@@ -21,7 +21,7 @@ import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.util.Log;
 
-/* Connects to a service synchronously */
+/* Connects to a service TODO(mingcl): This is not sync anymore. Rename this. */
 public class SyncServiceConnection implements ServiceConnection {
   private final String logTag = "SyncServiceConnection";
 
@@ -34,10 +34,9 @@ public class SyncServiceConnection implements ServiceConnection {
 
   @Override
   public void onServiceConnected(ComponentName className, IBinder service) {
-    Log.e(logTag, "Service has connected: ");
-    synchronized (this) {
-      mService = service;
-    }
+    Log.e(logTag, "Service has connected:");
+    synchronized (this) { mService = service; }
+    NotifyConnected(service);
   }
 
   @Override
@@ -62,7 +61,7 @@ public class SyncServiceConnection implements ServiceConnection {
     }
   }
 
-  public IBinder getIBinder() {
-    return mService;
-  }
+  public IBinder getIBinder() { return mService; }
+
+  private native void NotifyConnected(android.os.IBinder service);
 }
