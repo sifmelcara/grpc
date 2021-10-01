@@ -8484,6 +8484,7 @@ add_executable(binder_server_test
   ${_gRPC_PROTO_GENS_DIR}/src/proto/grpc/testing/simple_messages.pb.h
   ${_gRPC_PROTO_GENS_DIR}/src/proto/grpc/testing/simple_messages.grpc.pb.h
   src/core/ext/transport/binder/client/channel_create_impl.cc
+  src/core/ext/transport/binder/client/jni_utils.cc
   src/core/ext/transport/binder/server/binder_server.cc
   src/core/ext/transport/binder/server/binder_server_credentials.cc
   src/core/ext/transport/binder/transport/binder_transport.cc
