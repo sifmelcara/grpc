@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/core/ext/transport/binder/client/connection_id_generator.h"
+#include <grpc/impl/codegen/port_platform.h>
 
+#include "src/core/ext/transport/binder/client/connection_id_generator.h"
 
 namespace grpc_binder {
 

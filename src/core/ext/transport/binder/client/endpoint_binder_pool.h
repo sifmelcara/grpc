@@ -15,6 +15,8 @@
 #ifndef GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_ENDPOINT_BINDER_POOL_H
 #define GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_ENDPOINT_BINDER_POOL_H
 
+#include <grpc/impl/codegen/port_platform.h>
+
 #include <functional>
 #include <map>
 #include <string>

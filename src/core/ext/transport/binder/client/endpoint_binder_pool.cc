@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <grpc/impl/codegen/port_platform.h>
+
 #include "src/core/ext/transport/binder/client/endpoint_binder_pool.h"
 
 #include "src/core/ext/transport/binder/client/jni_utils.h"
@@ -19,6 +21,7 @@
 #ifdef GPR_SUPPORT_BINDER_TRANSPORT
 
 #include <jni.h>
+
 #include "src/core/ext/transport/binder/wire_format/binder_android.h"
 
 extern "C" {
@@ -38,14 +41,15 @@ void Java_io_grpc_binder_cpp_SyncServiceConnection_NotifyConnected(
   gpr_log(GPR_ERROR, "aibinder_pull = %p", aibinder_pull.get());
   auto b = absl::make_unique<grpc_binder::BinderAndroid>(aibinder_pull);
   GPR_ASSERT(b != nullptr);
-  grpc_binder::GetEndpointBinderPool()->AddEndpointBinder(conn_id, std::move(b));
+  grpc_binder::GetEndpointBinderPool()->AddEndpointBinder(conn_id,
+                                                          std::move(b));
   if (isCopy == JNI_TRUE) {
     jni_env->ReleaseStringUTFChars(conn_id_jstring, conn_id);
   }
 }
 }
 
-#endif // GPR_SUPPORT_BINDER_TRANSPORT
+#endif  // GPR_SUPPORT_BINDER_TRANSPORT
 
 namespace grpc_binder {
 
