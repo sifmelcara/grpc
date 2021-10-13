@@ -4640,6 +4640,10 @@ targets:
   - test/core/client_channel/resolvers/binder_resolver_test.cc
   deps:
   - grpc_test_util
+  platforms:
+  - linux
+  - posix
+  - mac
 - name: binder_server_test
   gtest: true
   build: test
