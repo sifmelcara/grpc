@@ -61,7 +61,7 @@ class BinderResolverTest : public ::testing::Test {
    public:
     ResultHandler() : expect_result_(false) {}
 
-    ResultHandler(const std::string& expected_binder_id)
+    explicit ResultHandler(const std::string& expected_binder_id)
         : expect_result_(true), expected_binder_id_(expected_binder_id) {}
 
     void ReturnResult(grpc_core::Resolver::Result result) override {
