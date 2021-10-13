@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <grpc/impl/codegen/port_platform.h>
+#include <grpc/support/port_platform.h>
 
 #include "src/core/lib/iomgr/port.h"
 
@@ -52,7 +53,7 @@ class BinderConnector : public grpc_core::SubchannelConnector {
       GPR_ASSERT(id_length >= 1);
       // Make sure there is null terminator at the expected location before
       // reading from it
-      GPR_ASSERT(un->sun_path[id_length-1] == '\0');
+      GPR_ASSERT(un->sun_path[id_length - 1] == '\0');
       conn_id = un->sun_path;
     }
     gpr_log(GPR_ERROR, "conn_id = %s", conn_id.c_str());
