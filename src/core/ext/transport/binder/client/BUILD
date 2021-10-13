@@ -57,9 +57,9 @@ grpc_cc_library(
         "absl/time",
     ],
     deps = [
+        ":connection_id_generator",
         ":grpc_transport_binder_client_impl",
         ":jni_utils",
-        ":connection_id_generator",
         "//:gpr",
         "//:gpr_base",
         "//:gpr_platform",
@@ -122,8 +122,8 @@ grpc_cc_library(
         "absl/strings",
     ],
     deps = [
-        ":jni_utils",
         ":endpoint_binder_pool",
+        ":jni_utils",
         "//:gpr",
         "//:gpr_base",
         "//:gpr_platform",
@@ -133,8 +133,8 @@ grpc_cc_library(
         "//:grpc_client_channel",
         "//:grpc_codegen",
         "//src/core/ext/transport/binder/security_policy:security_policy_interface",
-        "//src/core/ext/transport/binder/transport:binder_transport",
         "//src/core/ext/transport/binder/security_policy:untrusted_security_policy",
+        "//src/core/ext/transport/binder/transport:binder_transport",
         "//src/core/ext/transport/binder/wire_format:binder",
         "//src/core/ext/transport/binder/wire_format:binder_android",
     ],
@@ -147,15 +147,14 @@ grpc_cc_library(
     external_deps = [
     ],
     deps = [
-        "//:gpr",
         ":jni_utils",
+        "//:gpr",
         "//:gpr_base",
         "//:gpr_platform",
         "//:grpc",
         "//:grpc++_base",
         "//:grpc_base",
-        "//src/core/ext/transport/binder/wire_format:binder_android",
         "//src/core/ext/transport/binder/wire_format:binder",
+        "//src/core/ext/transport/binder/wire_format:binder_android",
     ],
 )
-

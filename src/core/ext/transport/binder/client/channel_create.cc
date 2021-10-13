@@ -69,8 +69,8 @@ std::shared_ptr<grpc::Channel> CreateBinderChannel(
 }
 
 std::shared_ptr<grpc::Channel> CreateCustomBinderChannel(
-    void* jni_env_void, jobject application,
-    absl::string_view package_name, absl::string_view class_name,
+    void* jni_env_void, jobject application, absl::string_view package_name,
+    absl::string_view class_name,
     std::shared_ptr<grpc::experimental::binder::SecurityPolicy> security_policy,
     const ChannelArguments& args) {
   grpc::internal::GrpcLibrary init_lib;

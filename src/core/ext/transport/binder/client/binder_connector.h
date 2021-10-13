@@ -16,6 +16,7 @@
 #define GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_BINDER_CONNECTOR_H
 
 #include <grpc/impl/codegen/port_platform.h>
+#include <grpc/support/port_platform.h>
 
 #include <jni.h>
 

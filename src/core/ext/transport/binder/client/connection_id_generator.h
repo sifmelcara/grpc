@@ -15,6 +15,8 @@
 #ifndef GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_CONNECTION_ID_GENERATOR_H
 #define GRPC_CORE_EXT_TRANSPORT_BINDER_CLIENT_CONNECTION_ID_GENERATOR_H
 
+#include <grpc/support/port_platform.h>
+
 #include <map>
 
 #include "absl/strings/string_view.h"
