@@ -14,21 +14,26 @@
 
 #include <grpc/impl/codegen/port_platform.h>
 
-#include "src/core/ext/transport/binder/client/binder_connector.h"
+#include "src/core/lib/iomgr/port.h"
+
+#ifdef GRPC_HAVE_UNIX_SOCKET
+#include <sys/un.h>
+#endif
 
 #include <functional>
 #include <map>
 
-#include "src/core/ext/transport/binder/client/endpoint_binder_pool.h"
-#include "src/core/ext/transport/binder/transport/binder_transport.h"
-#include "src/core/ext/transport/binder/wire_format/binder.h"
 #include "src/core/ext/filters/client_channel/connector.h"
 #include "src/core/ext/filters/client_channel/subchannel.h"
+#include "src/core/ext/transport/binder/client/binder_connector.h"
+#include "src/core/ext/transport/binder/client/endpoint_binder_pool.h"
 #include "src/core/ext/transport/binder/security_policy/untrusted_security_policy.h"
+#include "src/core/ext/transport/binder/transport/binder_transport.h"
+#include "src/core/ext/transport/binder/wire_format/binder.h"
 
 namespace {
 
-// TODO(mingcl): Currently this does not error handling and assumes the
+// TODO(mingcl): Currently this does no error handling and assumes the
 // connection always successes in reasonable time. Also no thread safety is
 // considered.
 class BinderConnector : public grpc_core::SubchannelConnector {
@@ -39,9 +44,16 @@ class BinderConnector : public grpc_core::SubchannelConnector {
                grpc_closure* notify) override {
     std::string conn_id;
     {
-      char tmp[sizeof(args.address->addr) + 1] = {0};
-      strncpy(tmp, args.address->addr, sizeof(args.address->addr));
-      conn_id = tmp;
+      struct sockaddr_un* un =
+          reinterpret_cast<struct sockaddr_un*>(args.address->addr);
+      // length of identifier, including null terminator
+      size_t id_length = args.address->len - sizeof(un->sun_family);
+      // The c-style string at least will have a null terminator
+      GPR_ASSERT(id_length >= 1);
+      // Make sure there is null terminator at the expected location before
+      // reading from it
+      GPR_ASSERT(un->sun_path[id_length-1] == '\0');
+      conn_id = un->sun_path;
     }
     gpr_log(GPR_ERROR, "conn_id = %s", conn_id.c_str());
 
@@ -59,11 +71,10 @@ class BinderConnector : public grpc_core::SubchannelConnector {
 
   void OnConnected(std::unique_ptr<grpc_binder::Binder> endpoint_binder) {
     GPR_ASSERT(endpoint_binder != nullptr);
-    grpc_transport* transport =
-        grpc_create_binder_transport_client(std::move(endpoint_binder),
-std::make_shared<
-            grpc::experimental::binder::UntrustedSecurityPolicy>()
-        );
+    grpc_transport* transport = grpc_create_binder_transport_client(
+        std::move(endpoint_binder),
+        std::make_shared<
+            grpc::experimental::binder::UntrustedSecurityPolicy>());
     GPR_ASSERT(transport != nullptr);
     result_->channel_args = grpc_channel_args_copy(args_.channel_args);
     result_->transport = transport;
