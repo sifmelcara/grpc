@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("//bazel:grpc_build_system.bzl", "grpc_cc_library", "grpc_package")
-load("//test/core/util:grpc_fuzzer.bzl", "grpc_fuzzer")
+load("//test/core/util:grpc_fuzzer.bzl", "grpc_proto_fuzzer")
 
 grpc_package(
     name = "test/core/transport/binder/end2end/fuzzers",
@@ -24,61 +24,77 @@ grpc_package(
 
 licenses(["notice"])
 
+# Defines protobuf messages for generating inputs. We manually define proto
+# library rules here so the same proto file can be shared between several
+# grpc_proto_fuzzer targets
+proto_library(
+    name = "binder_transport_fuzzer_proto",
+    srcs = ["proto/binder_transport_fuzzer.proto"],
+)
+
+cc_proto_library(
+    name = "binder_transport_fuzzer_cc_proto",
+    deps = ["binder_transport_fuzzer_proto"],
+)
+
 grpc_cc_library(
     name = "fuzzer_utils",
     srcs = ["fuzzer_utils.cc"],
-    hdrs = ["fuzzer_utils.h"],
-    external_deps = [
-        "absl/memory",
-        "absl/status",
-    ],
-    tags = [
-        "no_mac",
-        "no_windows",
-    ],
+    language = "c++",
+    public_hdrs = ["fuzzer_utils.h"],
     deps = [
-        "//:gpr",
-        "//src/core/ext/transport/binder/wire_format:binder",
-        "//src/core/ext/transport/binder/wire_format:wire_reader",
-    ],
-)
-
-grpc_fuzzer(
-    name = "client_fuzzer",
-    srcs = ["client_fuzzer.cc"],
-    corpus = "client_fuzzer_corpus",
-    language = "C++",
-    tags = [
-        "no_mac",
-        "no_windows",
-    ],
-    deps = [
-        ":fuzzer_utils",
+        "binder_transport_fuzzer_cc_proto",
         "//:gpr",
         "//:gpr_base",
+        "//:grpc++",
         "//:grpc++_base",
         "//:grpc_base",
-        "//src/core/ext/transport/binder/transport:binder_transport",
         "//test/core/util:grpc_test_util",
     ],
 )
 
-grpc_fuzzer(
-    name = "server_fuzzer",
-    srcs = ["server_fuzzer.cc"],
-    corpus = "server_fuzzer_corpus",
-    language = "C++",
+grpc_proto_fuzzer(
+    name = "binder_transport_client_fuzzer",
+    srcs = [
+        "client_fuzzer.cc",
+    ],
+    corpus = "binder_transport_client_fuzzer_corpus",
+    proto = "proto/client.proto",
     tags = [
         "no_mac",
         "no_windows",
     ],
     deps = [
+        "binder_transport_fuzzer_cc_proto",
         ":fuzzer_utils",
         "//:gpr",
         "//:gpr_base",
+        "//:grpc++",
         "//:grpc++_base",
         "//:grpc_base",
-        "//src/core/ext/transport/binder/transport:binder_transport",
+        "//test/core/util:grpc_test_util",
+    ],
+)
+
+grpc_proto_fuzzer(
+    name = "binder_transport_server_fuzzer",
+    srcs = [
+        "server_fuzzer.cc",
+    ],
+    corpus = "binder_transport_server_fuzzer_corpus",
+    proto = "proto/server.proto",
+    tags = [
+        "no_mac",
+        "no_windows",
+    ],
+    deps = [
+        "binder_transport_fuzzer_cc_proto",
+        ":fuzzer_utils",
+        "//:gpr",
+        "//:gpr_base",
+        "//:grpc++",
+        "//:grpc++_base",
+        "//:grpc_base",
         "//test/core/util:grpc_test_util",
     ],
 )
