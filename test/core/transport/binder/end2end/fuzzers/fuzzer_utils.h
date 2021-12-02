@@ -64,7 +64,7 @@ class BinderForFuzzing : public Binder {
  public:
   BinderForFuzzing() : input_(absl::make_unique<NoOpWritableParcel>()) {}
 
-  BinderForFuzzing(const binder_transport_fuzzer::IncomingParcels& p)
+  explicit BinderForFuzzing(const binder_transport_fuzzer::IncomingParcels& p)
       : incoming_parcels_(p), input_(absl::make_unique<NoOpWritableParcel>()) {}
 
   void Initialize() override {}
@@ -92,7 +92,7 @@ class BinderForFuzzing : public Binder {
 // upon user's requests.
 class ReadableParcelForFuzzing : public ReadableParcel {
  public:
-  ReadableParcelForFuzzing(const binder_transport_fuzzer::Parcel& p)
+  explicit ReadableParcelForFuzzing(const binder_transport_fuzzer::Parcel& p)
       : parcel_data_size_(p.data_size()), consumed_data_size_(0) {
     for (auto v : p.values()) {
       values_.push(v);
@@ -100,7 +100,7 @@ class ReadableParcelForFuzzing : public ReadableParcel {
   }
 
   // Construct from SetupTransportParcel, which have fixed types of data in it.
-  ReadableParcelForFuzzing(
+  explicit ReadableParcelForFuzzing(
       const binder_transport_fuzzer::SetupTransportParcel& p)
       : parcel_data_size_(p.data_size()), consumed_data_size_(0) {
     // Creates value for protocol version and put it into the queue
