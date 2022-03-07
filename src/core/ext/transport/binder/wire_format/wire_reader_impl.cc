@@ -352,7 +352,7 @@ absl::Status WireReaderImpl::ProcessStreamingTransactionImpl(
       // authority for message sent from client to server, we add one if
       // missing (it will be missing if client grpc-java).
       bool has_authority = false;
-      for (auto p : *initial_metadata_or_error) {
+      for (const auto& p : *initial_metadata_or_error) {
         if (p.first == ":authority") has_authority = true;
       }
       if (!has_authority) {
