@@ -24,21 +24,23 @@
 
 #include <grpc/support/log.h>
 
+#include "src/core/ext/transport/binder/utils/jni_binder.h"
 #include "src/core/lib/gpr/tls.h"
 #include "src/core/lib/gprpp/sync.h"
 
+// TODO: define GPR_USE_NDK_BINDER. Only try to use NDK when this is defined. Otherwise
+// use Java binder API through C++ -> Java JNI
+
 namespace {
 void* GetNdkBinderHandle() {
+#ifdef GPR_USE_NDK_BINDER
   // TODO(mingcl): Consider using RTLD_NOLOAD to check if it is already loaded
   // first
   static void* handle = dlopen("libbinder_ndk.so", RTLD_LAZY);
-  if (handle == nullptr) {
-    gpr_log(
-        GPR_ERROR,
-        "Cannot open libbinder_ndk.so. Does this device support API level 29?");
-    GPR_ASSERT(0);
-  }
   return handle;
+#else
+  return nullptr;
+#endif
 }
 
 JavaVM* g_jvm = nullptr;
@@ -47,6 +49,11 @@ grpc_core::Mutex g_jvm_mu;
 // Whether the thread has already attached to JVM (this is to prevent
 // repeated attachment in `AttachJvm()`)
 GPR_THREAD_LOCAL(bool) g_is_jvm_attached = false;
+
+}  // namespace
+
+namespace grpc_binder {
+namespace ndk_util {
 
 void SetJvm(JNIEnv* env) {
   // OK to lock here since this function will only be called once for each
@@ -87,23 +94,26 @@ bool AttachJvm() {
   return true;
 }
 
-}  // namespace
+JNIEnv* GetJNIEnv() {
+  grpc_core::MutexLock lock(&g_jvm_mu);
+  // assumes the JVM is already cached
+  JNIEnv* env;
+  g_jvm->AttachCurrentThread(&env, /* thr_args= */ nullptr);
+  return env;
+}
 
-namespace grpc_binder {
-namespace ndk_util {
-
+// TODO: consider level 29~32 where only some API are available
 // Helper macro to obtain the function pointer corresponding to the name
-#define FORWARD(name)                                                  \
-  typedef decltype(&name) func_type;                                   \
-  static func_type ptr =                                               \
-      reinterpret_cast<func_type>(dlsym(GetNdkBinderHandle(), #name)); \
-  if (ptr == nullptr) {                                                \
-    gpr_log(GPR_ERROR,                                                 \
-            "dlsym failed. Cannot find %s in libbinder_ndk.so. "       \
-            "BinderTransport requires API level >= 33",                \
-            #name);                                                    \
-    GPR_ASSERT(0);                                                     \
-  }                                                                    \
+#define FORWARD(name)                                           \
+  typedef decltype(&name) func_type;                            \
+  static func_type ptr = []() {                                 \
+    void* handle = GetNdkBinderHandle();                        \
+    if (handle != nullptr) {                                    \
+      return reinterpret_cast<func_type>(dlsym(handle, #name)); \
+    } else {                                                    \
+      return JNI_##name;                                        \
+    };                                                          \
+  }();                                                          \
   return ptr
 
 void AIBinder_Class_disableInterfaceTokenHeader(AIBinder_Class* clazz) {

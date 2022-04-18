@@ -155,13 +155,19 @@ std::shared_ptr<grpc::Channel> CreateCustomBinderChannel(
 }
 
 bool InitializeBinderChannelJavaClass(void* jni_env_void) {
+  grpc_binder::ndk_util::SetJvm(static_cast<JNIEnv*>(jni_env_void));
   return grpc_binder::FindNativeConnectionHelper(
+             static_cast<JNIEnv*>(jni_env_void)) != nullptr &&
+         grpc_binder::FindNativeBinderImplHelper(
              static_cast<JNIEnv*>(jni_env_void)) != nullptr;
 }
 
 bool InitializeBinderChannelJavaClass(
     void* jni_env_void, std::function<void*(std::string)> class_finder) {
+  grpc_binder::ndk_util::SetJvm(static_cast<JNIEnv*>(jni_env_void));
   return grpc_binder::FindNativeConnectionHelper(
+             static_cast<JNIEnv*>(jni_env_void), class_finder) != nullptr &&
+         grpc_binder::FindNativeBinderImplHelper(
              static_cast<JNIEnv*>(jni_env_void), class_finder) != nullptr;
 }
 
