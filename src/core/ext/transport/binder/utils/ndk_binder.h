@@ -35,6 +35,10 @@
 namespace grpc_binder {
 namespace ndk_util {
 
+void SetJvm(JNIEnv* env);
+bool AttachJvm();
+JNIEnv* GetJNIEnv();
+
 struct AIBinder;
 struct AParcel;
 struct AIBinder_Class;

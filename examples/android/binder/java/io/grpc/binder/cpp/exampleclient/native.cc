@@ -67,7 +67,7 @@ Java_io_grpc_binder_cpp_exampleclient_ButtonPressHandler_native_1entry(
     }
     return env->NewStringUTF(
         std::string("Clicked more than 1 time. Status not ok " +
-                    std::to_string(status.error_code()))
+                    std::to_string(status.error_code()) + status.error_message())
             .c_str());
   }
 }
