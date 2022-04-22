@@ -132,7 +132,7 @@ bool AIBinderTransact(JNIEnv* env, jobject binder, int code, jobject parcel,
                       int flags) {
   return CallNativeBinderImplStaticMethod<bool>(
       env, "AIBinderTransact",
-      "(Landroid/os/IBinder;ILandroid/os/Parcel;I)Ljava/lang/Boolean;",
+      "(Landroid/os/IBinder;ILandroid/os/Parcel;I)Z",
       [=](jclass cl, jmethodID mid) {
         return env->CallStaticBooleanMethod(cl, mid, binder, code, parcel,
                                             flags) == JNI_TRUE;
@@ -149,7 +149,7 @@ int AParcelGetDataSize(JNIEnv* env, jobject parcel) {
 
 void AParcelWriteInt32(JNIEnv* env, jobject parcel, int32_t value) {
   return CallNativeBinderImplStaticMethod<void>(
-      env, "AParcelWriteInt32", "(Landroid/os/Parcel;)I",
+      env, "AParcelWriteInt32", "(Landroid/os/Parcel;I)V",
       [=](jclass cl, jmethodID mid) {
         return env->CallStaticVoidMethod(cl, mid, parcel, value);
       });

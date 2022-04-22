@@ -20,6 +20,7 @@ jobject ToGlobalRef(JNIEnv* env, jobject local_ref) {
   jobject global_ref = env->NewGlobalRef(local_ref);
   env->DeleteLocalRef(local_ref);
   GPR_ASSERT(global_ref != nullptr);
+  gpr_log(GPR_ERROR, "New global ref: %p", global_ref);
   return global_ref;
 }
 
@@ -43,6 +44,7 @@ class FromJniType {
   operator T*() const {
     constexpr bool convertible =
         std::is_same<T, grpc_binder::ndk_util::AIBinder>::value ||
+        std::is_same<T, const grpc_binder::ndk_util::AParcel>::value ||
         std::is_same<T, grpc_binder::ndk_util::AParcel>::value;
     static_assert(convertible, "Cannot convert jobject");
     return reinterpret_cast<T*>(ptr_);
@@ -71,14 +73,16 @@ namespace ndk_util {
 void JNI_AIBinder_Class_disableInterfaceTokenHeader(AIBinder_Class* /*clazz*/) {
 }
 
-// TODO thread safety
+// maps binder to userdata
 std::map<void*, void*> g_user_data;
 // TODO use static initializer
 grpc_core::Mutex g_user_data_mu;
 
+std::map<void*, const AIBinder_Class*> g_binder_to_class;
+
 void* JNI_AIBinder_getUserData(AIBinder* binder) {
   GPR_ASSERT(g_user_data.count(binder));
-      grpc_core::MutexLock lock(&g_user_data_mu);
+  grpc_core::MutexLock lock(&g_user_data_mu);
   return g_user_data[binder];
 }
 
@@ -87,9 +91,11 @@ uid_t JNI_AIBinder_getCallingUid() {
   return 0;
 }
 
-AIBinder* JNI_AIBinder_fromJavaBinder(JNIEnv* , jobject binder) {
+AIBinder* JNI_AIBinder_fromJavaBinder(JNIEnv* env, jobject binder) {
+  // ndkbinder's AIBinder_fromJavaBinder's implementation probably implies a
+  // conversion from localref to globalref+ref counting
   // TODO: probably no need to convert?
-  return FromJniType(binder);
+  return FromJniType(ToGlobalRef(env, binder));
 }
 
 struct class_table {
@@ -116,24 +122,24 @@ AIBinder* JNI_AIBinder_new(const AIBinder_Class* clazz, void* args) {
   // call JNI to allocate a binder object in Java
   jobject binder = ToGlobalRef(env, AIBinderNew(env));
   {
-      grpc_core::MutexLock lock(&g_user_data_mu);
-  g_user_data[binder] = user_data;
+    grpc_core::MutexLock lock(&g_user_data_mu);
+    g_user_data[binder] = user_data;
+    g_binder_to_class[binder] = clazz;
   }
   return FromJniType(binder);
 }
 
-bool JNI_AIBinder_associateClass(AIBinder* ,
-                                 const AIBinder_Class* ) {
+bool JNI_AIBinder_associateClass(AIBinder*, const AIBinder_Class*) {
   // We only call this method for binder passed from Java and always associates
   // no-op class.
   return true;
 }
 
-void JNI_AIBinder_incStrong(AIBinder* ) {
+void JNI_AIBinder_incStrong(AIBinder*) {
   // TODO ref counting
 }
 
-void JNI_AIBinder_decStrong(AIBinder* ) {
+void JNI_AIBinder_decStrong(AIBinder*) {
   // TODO ref counting
 }
 
@@ -211,7 +217,7 @@ binder_status_t JNI_AParcel_readString(const AParcel* parcel, void* stringData,
   std::string s = AParcelReadString(env, ToJniType(parcel));
   char* buffer;
   // The required buffer size includes null terminator.
-  size_t len = s.length()+1;
+  size_t len = s.length() + 1;
   allocator(stringData, len, &buffer);
   strncpy(buffer, s.c_str(), len);
   return STATUS_OK;
@@ -220,7 +226,8 @@ binder_status_t JNI_AParcel_readString(const AParcel* parcel, void* stringData,
 binder_status_t JNI_AParcel_readStrongBinder(const AParcel* parcel,
                                              AIBinder** binder) {
   JNIEnv* env = GetJNIEnv();
-  *binder = FromJniType(ToGlobalRef(env, AParcelReadStrongBinder(env, ToJniType(parcel))));
+  *binder = FromJniType(
+      ToGlobalRef(env, AParcelReadStrongBinder(env, ToJniType(parcel))));
   return STATUS_OK;
 }
 
@@ -243,6 +250,18 @@ binder_status_t JNI_AIBinder_prepareTransaction(AIBinder* binder,
 jobject JNI_AIBinder_toJavaBinder(JNIEnv*, AIBinder* binder) {
   // TODO: probably no need to convert?
   return ToJniType(binder);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_io_grpc_binder_cpp_NativeBinderImpl_onTransaction__Landroid_os_IBinder_2ILandroid_os_Parcel_2(
+    JNIEnv*, jobject /*this*/, jobject ibinder, jint tx_code,
+    jobject parcel) {
+  class_table ct;
+  {
+    grpc_core::MutexLock lock(&g_user_data_mu);
+    ct = g_class_map[g_binder_to_class[ibinder]];
+  }
+  ct.onTransact(FromJniType(ibinder), tx_code, FromJniType(parcel), nullptr);
 }
 
 }  // namespace ndk_util

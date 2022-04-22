@@ -52,7 +52,7 @@ final class NativeBinderImpl {
   }
 
   /** Returns True if the call is successfull. */
-  static Boolean AIBinderTransact(IBinder b, int code, Parcel in, int flags) {
+  static boolean AIBinderTransact(IBinder b, int code, Parcel in, int flags) {
     // Other flag combination is not supported.
     if (flags != Binder.FLAG_ONEWAY) {
       Log.w("NativeBinderImpl", "Unsupported flags " + flags);
@@ -111,5 +111,5 @@ final class NativeBinderImpl {
   }
 
   // TODO: change return type to binder_status_t and handle errors?
-  public static native void onTransaction(Binder binder, int txCode, Parcel in);
+  public static native void onTransaction(IBinder ibinder, int txCode, Parcel in);
 }
