@@ -2852,6 +2852,7 @@ add_library(grpc++
   src/core/ext/transport/binder/server/binder_server.cc
   src/core/ext/transport/binder/server/binder_server_credentials.cc
   src/core/ext/transport/binder/transport/binder_transport.cc
+  src/core/ext/transport/binder/utils/jni_binder.cc
   src/core/ext/transport/binder/utils/ndk_binder.cc
   src/core/ext/transport/binder/utils/transport_stream_receiver_impl.cc
   src/core/ext/transport/binder/wire_format/binder_android.cc
@@ -7929,6 +7930,7 @@ add_executable(binder_transport_test
   src/core/ext/transport/binder/server/binder_server.cc
   src/core/ext/transport/binder/server/binder_server_credentials.cc
   src/core/ext/transport/binder/transport/binder_transport.cc
+  src/core/ext/transport/binder/utils/jni_binder.cc
   src/core/ext/transport/binder/utils/ndk_binder.cc
   src/core/ext/transport/binder/utils/transport_stream_receiver_impl.cc
   src/core/ext/transport/binder/wire_format/binder_android.cc
@@ -9794,6 +9796,7 @@ add_executable(endpoint_binder_pool_test
   src/core/ext/transport/binder/server/binder_server.cc
   src/core/ext/transport/binder/server/binder_server_credentials.cc
   src/core/ext/transport/binder/transport/binder_transport.cc
+  src/core/ext/transport/binder/utils/jni_binder.cc
   src/core/ext/transport/binder/utils/ndk_binder.cc
   src/core/ext/transport/binder/utils/transport_stream_receiver_impl.cc
   src/core/ext/transport/binder/wire_format/binder_android.cc
@@ -10202,6 +10205,7 @@ add_executable(fake_binder_test
   src/core/ext/transport/binder/server/binder_server.cc
   src/core/ext/transport/binder/server/binder_server_credentials.cc
   src/core/ext/transport/binder/transport/binder_transport.cc
+  src/core/ext/transport/binder/utils/jni_binder.cc
   src/core/ext/transport/binder/utils/ndk_binder.cc
   src/core/ext/transport/binder/utils/transport_stream_receiver_impl.cc
   src/core/ext/transport/binder/wire_format/binder_android.cc
@@ -16215,6 +16219,7 @@ add_executable(transport_stream_receiver_test
   src/core/ext/transport/binder/server/binder_server.cc
   src/core/ext/transport/binder/server/binder_server_credentials.cc
   src/core/ext/transport/binder/transport/binder_transport.cc
+  src/core/ext/transport/binder/utils/jni_binder.cc
   src/core/ext/transport/binder/utils/ndk_binder.cc
   src/core/ext/transport/binder/utils/transport_stream_receiver_impl.cc
   src/core/ext/transport/binder/wire_format/binder_android.cc
@@ -16557,6 +16562,7 @@ add_executable(wire_reader_test
   src/core/ext/transport/binder/server/binder_server.cc
   src/core/ext/transport/binder/server/binder_server_credentials.cc
   src/core/ext/transport/binder/transport/binder_transport.cc
+  src/core/ext/transport/binder/utils/jni_binder.cc
   src/core/ext/transport/binder/utils/ndk_binder.cc
   src/core/ext/transport/binder/utils/transport_stream_receiver_impl.cc
   src/core/ext/transport/binder/wire_format/binder_android.cc
@@ -16648,6 +16654,7 @@ add_executable(wire_writer_test
   src/core/ext/transport/binder/server/binder_server.cc
   src/core/ext/transport/binder/server/binder_server_credentials.cc
   src/core/ext/transport/binder/transport/binder_transport.cc
+  src/core/ext/transport/binder/utils/jni_binder.cc
   src/core/ext/transport/binder/utils/ndk_binder.cc
   src/core/ext/transport/binder/utils/transport_stream_receiver_impl.cc
   src/core/ext/transport/binder/wire_format/binder_android.cc

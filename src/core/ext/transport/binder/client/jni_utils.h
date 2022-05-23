@@ -73,7 +73,8 @@ int64_t AParcelReadInt64(JNIEnv* env, jobject parcel);
 jobject AParcelReadStrongBinder(JNIEnv* env, jobject parcel);
 std::string AParcelReadString(JNIEnv* env, jobject parcel);
 
-void AParcelWriteByteArray(JNIEnv* env, jobject parcel, const int8_t* arrayData, size_t length);
+void AParcelWriteByteArray(JNIEnv* env, jobject parcel, const int8_t* arrayData,
+                           size_t length);
 std::vector<int8_t> AParcelReadByteArray(JNIEnv* env, jobject parcel);
 
 }  // namespace grpc_binder

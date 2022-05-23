@@ -111,13 +111,11 @@ T CallNativeBinderImplStaticMethod(
 
 jobject AIBinderNew(JNIEnv* env, int binder_id) {
   return CallNativeBinderImplStaticMethod<jobject>(
-      env, "AIBinderNew",
-      "(I)Landroid/os/IBinder;",
+      env, "AIBinderNew", "(I)Landroid/os/IBinder;",
       [=](jclass cl, jmethodID mid) {
         return env->CallStaticObjectMethod(cl, mid, binder_id);
       });
 }
-
 
 jobject AIBinderPrepareTransaction(JNIEnv* env, jobject binder) {
   return CallNativeBinderImplStaticMethod<jobject>(
@@ -131,8 +129,7 @@ jobject AIBinderPrepareTransaction(JNIEnv* env, jobject binder) {
 bool AIBinderTransact(JNIEnv* env, jobject binder, int code, jobject parcel,
                       int flags) {
   return CallNativeBinderImplStaticMethod<bool>(
-      env, "AIBinderTransact",
-      "(Landroid/os/IBinder;ILandroid/os/Parcel;I)Z",
+      env, "AIBinderTransact", "(Landroid/os/IBinder;ILandroid/os/Parcel;I)Z",
       [=](jclass cl, jmethodID mid) {
         return env->CallStaticBooleanMethod(cl, mid, binder, code, parcel,
                                             flags) == JNI_TRUE;
@@ -223,7 +220,8 @@ std::string AParcelReadString(JNIEnv* env, jobject parcel) {
 void AParcelWriteByteArray(JNIEnv* env, jobject parcel, const int8_t* arrayData,
                            size_t length) {
   return CallNativeBinderImplStaticMethod<void>(
-      env, "AParcelWriteByteArray", "(Landroid/os/Parcel;[B)V", [=](jclass cl, jmethodID mid) {
+      env, "AParcelWriteByteArray", "(Landroid/os/Parcel;[B)V",
+      [=](jclass cl, jmethodID mid) {
         jbyteArray arr;
         arr = env->NewByteArray(length);
         if (arr == nullptr) {
@@ -237,7 +235,8 @@ void AParcelWriteByteArray(JNIEnv* env, jobject parcel, const int8_t* arrayData,
 
 std::vector<int8_t> AParcelReadByteArray(JNIEnv* env, jobject parcel) {
   return CallNativeBinderImplStaticMethod<std::vector<int8_t>>(
-      env, "AParcelReadByteArray", "(Landroid/os/Parcel;)[B", [=](jclass cl, jmethodID mid) {
+      env, "AParcelReadByteArray", "(Landroid/os/Parcel;)[B",
+      [=](jclass cl, jmethodID mid) {
         jbyteArray jarr =
             (jbyteArray)env->CallStaticObjectMethod(cl, mid, parcel);
         jboolean isCopy;

@@ -28,8 +28,8 @@
 #include "src/core/lib/gpr/tls.h"
 #include "src/core/lib/gprpp/sync.h"
 
-// TODO: define GPR_USE_NDK_BINDER. Only try to use NDK when this is defined. Otherwise
-// use Java binder API through C++ -> Java JNI
+// TODO: define GPR_USE_NDK_BINDER. Only try to use NDK when this is defined.
+// Otherwise use Java binder API through C++ -> Java JNI
 
 namespace {
 void* GetNdkBinderHandle() {
