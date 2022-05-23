@@ -21,8 +21,8 @@ android_library(
     srcs = [
         "GrpcBinderConnection.java",
         "GrpcCppServerBuilder.java",
-        "NativeConnectionHelper.java",
         "NativeBinderImpl.java",
+        "NativeConnectionHelper.java",
     ],
     visibility = ["//visibility:public"],
     deps = [],

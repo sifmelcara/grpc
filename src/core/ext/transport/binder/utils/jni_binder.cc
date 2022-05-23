@@ -231,7 +231,8 @@ AIBinder* JNI_AIBinder_new(const AIBinder_Class* clazz, void* args) {
   return reinterpret_cast<AIBinder*>(binder_id);
 }
 
-bool JNI_AIBinder_associateClass(AIBinder* binder, const AIBinder_Class* clazz) {
+bool JNI_AIBinder_associateClass(AIBinder* binder,
+                                 const AIBinder_Class* clazz) {
   // We only call this method for binder passed from Java and always associates
   // no-op class.
   intptr_t binder_id = reinterpret_cast<intptr_t>(binder);
