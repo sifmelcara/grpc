@@ -13,15 +13,20 @@ import java.util.List;
 final class NativeBinderImpl {
   // From grpc-java
   static final class LeakSafeOneWayBinder extends Binder {
-    public LeakSafeOneWayBinder() {}
+    // Identifier for native code
+    public int id;
+
+    public LeakSafeOneWayBinder(int id) {
+      this.id = id;
+    }
 
     @Override
     protected boolean onTransact(int code, Parcel parcel, Parcel reply, int flags) {
       try {
-        onTransaction(this, code, parcel);
+        onTransaction(id, code, parcel, Binder.getCallingUid());
         return true;
       } catch (RuntimeException re) {
-        Log.w("NativeBinderImpl", "failure sending transaction " + code + re);
+        Log.w("NativeBinderImpl", "failed to handle transaction " + code + re);
         return false;
       }
     }
@@ -35,8 +40,8 @@ final class NativeBinderImpl {
   // static Map<String, LeakSafeOneWayBinder> s = new HashMap<>();
   static List<LeakSafeOneWayBinder> binders = new ArrayList<>();
 
-  static IBinder AIBinderNew() {
-    LeakSafeOneWayBinder b = new LeakSafeOneWayBinder();
+  static IBinder AIBinderNew(int id) {
+    LeakSafeOneWayBinder b = new LeakSafeOneWayBinder(id);
     binders.add(b);
     return b;
   }
@@ -111,5 +116,5 @@ final class NativeBinderImpl {
   }
 
   // TODO: change return type to binder_status_t and handle errors?
-  public static native void onTransaction(IBinder ibinder, int txCode, Parcel in);
+  public static native void onTransaction(int binder_id, int txCode, Parcel in, int calling_uid);
 }

@@ -53,7 +53,7 @@ void TryEstablishConnection(JNIEnv* env, jobject application,
 // Will also return false if failed to invoke Java.
 bool IsSignatureMatch(JNIEnv* env, jobject context, int uid1, int uid2);
 
-jobject AIBinderNew(JNIEnv* env);
+jobject AIBinderNew(JNIEnv* env, int id);
 jobject AIBinderPrepareTransaction(JNIEnv* env, jobject binder);
 
 // Returns true if success

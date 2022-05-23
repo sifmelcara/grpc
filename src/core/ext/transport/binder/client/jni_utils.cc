@@ -109,12 +109,12 @@ T CallNativeBinderImplStaticMethod(
   return jni_func(cl, mid);
 }
 
-jobject AIBinderNew(JNIEnv* env) {
+jobject AIBinderNew(JNIEnv* env, int binder_id) {
   return CallNativeBinderImplStaticMethod<jobject>(
       env, "AIBinderNew",
-      "()Landroid/os/IBinder;",
+      "(I)Landroid/os/IBinder;",
       [=](jclass cl, jmethodID mid) {
-        return env->CallStaticObjectMethod(cl, mid);
+        return env->CallStaticObjectMethod(cl, mid, binder_id);
       });
 }
 

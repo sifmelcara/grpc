@@ -210,6 +210,7 @@ absl::Status BinderAndroid::Transact(BinderTransportTxCode tx_code) {
            ndk_util::FLAG_ONEWAY) == ndk_util::STATUS_OK)
           ? absl::OkStatus()
           : absl::InternalError("ndk_util::AIBinder_transact failed");
+  // gpr_log(GPR_ERROR, "BinderAndroid::Transact: unused_output_parcel = %p", unused_output_parcel );
   ndk_util::AParcel_delete(unused_output_parcel);
   return result;
 }
