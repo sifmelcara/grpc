@@ -89,6 +89,24 @@ void TryEstablishConnection(JNIEnv* env, jobject application,
                             env->NewStringUTF(std::string(conn_id).c_str()));
 }
 
+void Disconnect(JNIEnv* env, absl::string_view conn_id) {
+  std::string method = "disconnect";
+  std::string type =
+      "(Ljava/lang/String;)V";
+
+  jclass cl = FindNativeConnectionHelper(env);
+  if (cl == nullptr) {
+    return;
+  }
+
+  jmethodID mid = env->GetStaticMethodID(cl, method.c_str(), type.c_str());
+  if (mid == nullptr) {
+    gpr_log(GPR_ERROR, "No method id %s", method.c_str());
+  }
+
+  env->CallStaticVoidMethod(cl, mid, env->NewStringUTF(std::string(conn_id).c_str()));
+}
+
 bool IsSignatureMatch(JNIEnv* env, jobject context, int uid1, int uid2) {
   const std::string method = "isSignatureMatch";
   const std::string type = "(Landroid/content/Context;II)Z";
@@ -110,4 +128,6 @@ bool IsSignatureMatch(JNIEnv* env, jobject context, int uid1, int uid2) {
 }  // namespace grpc_binder
 
 #endif
+
+
 #endif

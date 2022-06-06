@@ -36,6 +36,11 @@ final class NativeConnectionHelper {
     s.get(connId).tryConnect(pkg, cls, action_name);
   }
 
+  static void disconnect(String connId) {
+    s.get(connId).disconnect();
+    s.remove(connId);
+  }
+
   // Returns true if the packages signature of the 2 UIDs match.
   // `context` is used to get PackageManager.
   // Suppress unnecessary internal warnings related to checkSignatures compatibility issue.
