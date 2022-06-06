@@ -43,6 +43,9 @@ void TryEstablishConnection(JNIEnv* env, jobject application,
                             absl::string_view action_name,
                             absl::string_view conn_id);
 
+// Calls Java method NativeConnectionHelper.disconnect
+void Disconnect(JNIEnv* env, absl::string_view conn_id);
+
 // Calls Java method NativeConnectionHelper.isSignatureMatch.
 // Will also return false if failed to invoke Java.
 bool IsSignatureMatch(JNIEnv* env, jobject context, int uid1, int uid2);

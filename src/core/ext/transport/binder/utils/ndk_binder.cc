@@ -90,6 +90,14 @@ bool AttachJvm() {
 }  // namespace
 
 namespace grpc_binder {
+
+void* GetEnv() {
+  GPR_ASSERT(g_is_jvm_attached);
+  JNIEnv* env;
+  g_jvm->AttachCurrentThread(&env, nullptr);
+  return env;
+}
+
 namespace ndk_util {
 
 // Helper macro to obtain the function pointer corresponding to the name

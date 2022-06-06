@@ -62,6 +62,7 @@ Java_io_grpc_binder_cpp_exampleclient_ButtonPressHandler_native_1entry(
     helloworld::HelloReply response;
     request.set_name("BinderTransportClient");
     grpc::Status status = stub->SayHello(&context, request, &response);
+    channel = nullptr;
     if (status.ok()) {
       return env->NewStringUTF(response.message().c_str());
     }

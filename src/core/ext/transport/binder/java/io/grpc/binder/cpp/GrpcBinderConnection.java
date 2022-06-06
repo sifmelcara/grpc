@@ -80,6 +80,10 @@ public class GrpcBinderConnection implements ServiceConnection {
     }
   }
 
+  public void disconnect() {
+    mContext.unbindService(this);
+  }
+
   // Calls a function defined in endpoint_binder_pool.cc
   private static native void notifyConnected(String connId, IBinder service);
 }

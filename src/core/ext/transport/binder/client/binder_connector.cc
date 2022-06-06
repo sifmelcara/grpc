@@ -32,8 +32,10 @@
 #include "src/core/ext/filters/client_channel/subchannel.h"
 #include "src/core/ext/transport/binder/client/endpoint_binder_pool.h"
 #include "src/core/ext/transport/binder/client/security_policy_setting.h"
+#include "src/core/ext/transport/binder/client/jni_utils.h"
 #include "src/core/ext/transport/binder/transport/binder_transport.h"
 #include "src/core/ext/transport/binder/wire_format/binder.h"
+#include "src/core/ext/transport/binder/utils/ndk_binder.h"
 
 namespace {
 
@@ -99,7 +101,11 @@ class BinderConnector : public grpc_core::SubchannelConnector {
 
     Unref();  // Was referenced in BinderConnector::Connect
   }
-  void Shutdown(grpc_error_handle error) override { (void)error; }
+  void Shutdown(grpc_error_handle error) override {
+    gpr_log(GPR_INFO, "binder subchannel shutting down %p", this);
+    grpc_binder::Disconnect((JNIEnv*)grpc_binder::GetEnv(), conn_id_);
+    GRPC_ERROR_UNREF(error);
+  }
 
  private:
   Args args_;
