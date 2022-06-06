@@ -91,8 +91,7 @@ void TryEstablishConnection(JNIEnv* env, jobject application,
 
 void Disconnect(JNIEnv* env, absl::string_view conn_id) {
   std::string method = "disconnect";
-  std::string type =
-      "(Ljava/lang/String;)V";
+  std::string type = "(Ljava/lang/String;)V";
 
   jclass cl = FindNativeConnectionHelper(env);
   if (cl == nullptr) {
@@ -104,7 +103,8 @@ void Disconnect(JNIEnv* env, absl::string_view conn_id) {
     gpr_log(GPR_ERROR, "No method id %s", method.c_str());
   }
 
-  env->CallStaticVoidMethod(cl, mid, env->NewStringUTF(std::string(conn_id).c_str()));
+  env->CallStaticVoidMethod(cl, mid,
+                            env->NewStringUTF(std::string(conn_id).c_str()));
 }
 
 bool IsSignatureMatch(JNIEnv* env, jobject context, int uid1, int uid2) {
@@ -128,6 +128,5 @@ bool IsSignatureMatch(JNIEnv* env, jobject context, int uid1, int uid2) {
 }  // namespace grpc_binder
 
 #endif
-
 
 #endif
