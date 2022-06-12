@@ -28,12 +28,17 @@ ABSL_CONST_INIT extern const int LAST_CALL_TRANSACTION;
 
 namespace grpc_binder {
 
-enum class BinderTransportTxCode {
-  SETUP_TRANSPORT = 1,
-  SHUTDOWN_TRANSPORT = 2,
-  ACKNOWLEDGE_BYTES = 3,
-  PING = 4,
-  PING_RESPONSE = 5,
+struct BinderTransportTxCode {
+  BinderTransportTxCode(int code) : code(code){};
+  bool operator==(const BinderTransportTxCode& other) const {
+    return this->code == other.code;
+  }
+  int code;
+  static constexpr int SETUP_TRANSPORT = 1;
+  static constexpr int SHUTDOWN_TRANSPORT = 2;
+  static constexpr int ACKNOWLEDGE_BYTES = 3;
+  static constexpr int PING = 4;
+  static constexpr int PING_RESPONSE = 5;
 };
 
 ABSL_CONST_INIT extern const int kFirstCallId;

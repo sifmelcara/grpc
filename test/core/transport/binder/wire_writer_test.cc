@@ -62,8 +62,8 @@ TEST(WireWriterTest, RpcCall) {
 
     EXPECT_CALL(mock_binder_ref, Transact(BinderTransportTxCode(kFirstCallId)));
 
-    Transaction tx(kFirstCallId, /*is_client=*/true);
-    EXPECT_TRUE(wire_writer.RpcCall(tx).ok());
+    auto tx = std::make_unique<Transaction>(kFirstCallId, /*is_client=*/true);
+    EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
     sequence_number++;
   }
   {
@@ -95,10 +95,11 @@ TEST(WireWriterTest, RpcCall) {
     EXPECT_CALL(mock_binder_ref,
                 Transact(BinderTransportTxCode(kFirstCallId + 1)));
 
-    Transaction tx(kFirstCallId + 1, /*is_client=*/true);
-    tx.SetPrefix(kMetadata);
-    tx.SetMethodRef("/example/method/ref");
-    EXPECT_TRUE(wire_writer.RpcCall(tx).ok());
+    auto tx =
+        std::make_unique<Transaction>(kFirstCallId + 1, /*is_client=*/true);
+    tx->SetPrefix(kMetadata);
+    tx->SetMethodRef("/example/method/ref");
+    EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
   }
   {
     // flag
@@ -109,9 +110,9 @@ TEST(WireWriterTest, RpcCall) {
     ExpectWriteByteArray("data");
     EXPECT_CALL(mock_binder_ref, Transact(BinderTransportTxCode(kFirstCallId)));
 
-    Transaction tx(kFirstCallId, /*is_client=*/true);
-    tx.SetData("data");
-    EXPECT_TRUE(wire_writer.RpcCall(tx).ok());
+    auto tx = std::make_unique<Transaction>(kFirstCallId, /*is_client=*/true);
+    tx->SetData("data");
+    EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
     sequence_number++;
   }
   {
@@ -122,9 +123,9 @@ TEST(WireWriterTest, RpcCall) {
 
     EXPECT_CALL(mock_binder_ref, Transact(BinderTransportTxCode(kFirstCallId)));
 
-    Transaction tx(kFirstCallId, /*is_client=*/true);
-    tx.SetSuffix({});
-    EXPECT_TRUE(wire_writer.RpcCall(tx).ok());
+    auto tx = std::make_unique<Transaction>(kFirstCallId, /*is_client=*/true);
+    tx->SetSuffix({});
+    EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
     sequence_number++;
   }
   {
@@ -158,14 +159,14 @@ TEST(WireWriterTest, RpcCall) {
 
     EXPECT_CALL(mock_binder_ref, Transact(BinderTransportTxCode(kFirstCallId)));
 
-    Transaction tx(kFirstCallId, /*is_client=*/true);
+    auto tx = std::make_unique<Transaction>(kFirstCallId, /*is_client=*/true);
     // TODO(waynetu): Implement a helper function that automatically creates
     // EXPECT_CALL based on the tx object.
-    tx.SetPrefix(kMetadata);
-    tx.SetMethodRef("/example/method/ref");
-    tx.SetData("");
-    tx.SetSuffix({});
-    EXPECT_TRUE(wire_writer.RpcCall(tx).ok());
+    tx->SetPrefix(kMetadata);
+    tx->SetMethodRef("/example/method/ref");
+    tx->SetData("");
+    tx->SetSuffix({});
+    EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
     sequence_number++;
   }
 
@@ -197,9 +198,10 @@ TEST(WireWriterTest, RpcCall) {
                 Transact(BinderTransportTxCode(kFirstCallId + 2)));
 
     // Use a new stream.
-    Transaction tx(kFirstCallId + 2, /*is_client=*/true);
-    tx.SetData(std::string(2 * WireWriterImpl::kBlockSize + 1, 'a'));
-    EXPECT_TRUE(wire_writer.RpcCall(tx).ok());
+    auto tx =
+        std::make_unique<Transaction>(kFirstCallId + 2, /*is_client=*/true);
+    tx->SetData(std::string(2 * WireWriterImpl::kBlockSize + 1, 'a'));
+    EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
   }
   // Really large message with metadata
   {
@@ -233,12 +235,13 @@ TEST(WireWriterTest, RpcCall) {
                 Transact(BinderTransportTxCode(kFirstCallId + 3)));
 
     // Use a new stream.
-    Transaction tx(kFirstCallId + 3, /*is_client=*/true);
-    tx.SetPrefix({});
-    tx.SetMethodRef("123");
-    tx.SetData(std::string(2 * WireWriterImpl::kBlockSize + 1, 'a'));
-    tx.SetSuffix({});
-    EXPECT_TRUE(wire_writer.RpcCall(tx).ok());
+    auto tx =
+        std::make_unique<Transaction>(kFirstCallId + 3, /*is_client=*/true);
+    tx->SetPrefix({});
+    tx->SetMethodRef("123");
+    tx->SetData(std::string(2 * WireWriterImpl::kBlockSize + 1, 'a'));
+    tx->SetSuffix({});
+    EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
   }
 }
 

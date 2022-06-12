@@ -29,8 +29,9 @@
   } while (0)
 
 namespace grpc_binder {
+
 WireWriterImpl::WireWriterImpl(std::unique_ptr<Binder> binder)
-    : binder_(std::move(binder)) {}
+    : binder_(std::move(binder)), combiner_(grpc_combiner_create()) {}
 
 absl::Status WireWriterImpl::WriteInitialMetadata(const Transaction& tx,
                                                   WritableParcel* parcel) {
@@ -66,119 +67,213 @@ absl::Status WireWriterImpl::WriteTrailingMetadata(const Transaction& tx,
   return absl::OkStatus();
 }
 
+// Flow control constant are specified at
+// https://github.com/grpc/proposal/blob/master/L73-java-binderchannel/wireformat.md#flow-control
 const int64_t WireWriterImpl::kBlockSize = 16 * 1024;
 const int64_t WireWriterImpl::kFlowControlWindowSize = 128 * 1024;
 
-bool WireWriterImpl::CanBeSentInOneTransaction(const Transaction& tx) const {
-  return (tx.GetFlags() & kFlagMessageData) == 0 ||
-         tx.GetMessageData().size() <= kBlockSize;
-}
-
-absl::Status WireWriterImpl::RpcCallFastPath(const Transaction& tx) {
-  int& seq = seq_num_[tx.GetTxCode()];
-  // Fast path: send data in one transaction.
+absl::Status WireWriterImpl::MakeTransaction(
+    BinderTransportTxCode tx_code,
+    std::function<absl::Status(WritableParcel*)> fill_parcel) {
+  grpc_core::MutexLock lock(&mu_);
   RETURN_IF_ERROR(binder_->PrepareTransaction());
   WritableParcel* parcel = binder_->GetWritableParcel();
-  RETURN_IF_ERROR(parcel->WriteInt32(tx.GetFlags()));
-  RETURN_IF_ERROR(parcel->WriteInt32(seq++));
-  if (tx.GetFlags() & kFlagPrefix) {
-    RETURN_IF_ERROR(WriteInitialMetadata(tx, parcel));
-  }
-  if (tx.GetFlags() & kFlagMessageData) {
-    RETURN_IF_ERROR(parcel->WriteByteArrayWithLength(tx.GetMessageData()));
-  }
-  if (tx.GetFlags() & kFlagSuffix) {
-    RETURN_IF_ERROR(WriteTrailingMetadata(tx, parcel));
-  }
-  // FIXME(waynetu): Construct BinderTransportTxCode from an arbitrary integer
-  // is an undefined behavior.
-  return binder_->Transact(BinderTransportTxCode(tx.GetTxCode()));
-}
-
-bool WireWriterImpl::WaitForAcknowledgement() {
-  if (num_outgoing_bytes_ < num_acknowledged_bytes_ + kFlowControlWindowSize) {
-    return true;
-  }
-  absl::Time deadline = absl::Now() + absl::Seconds(1);
-  do {
-    if (cv_.WaitWithDeadline(&mu_, deadline)) {
-      return false;
-    }
-    if (absl::Now() >= deadline) {
-      return false;
-    }
-  } while (num_outgoing_bytes_ >=
-           num_acknowledged_bytes_ + kFlowControlWindowSize);
-  return true;
-}
-
-absl::Status WireWriterImpl::RpcCall(const Transaction& tx) {
-  // TODO(mingcl): check tx_code <= last call id
-  grpc_core::MutexLock lock(&mu_);
-  GPR_ASSERT(tx.GetTxCode() >= kFirstCallId);
-  if (CanBeSentInOneTransaction(tx)) {
-    return RpcCallFastPath(tx);
-  }
-  // Slow path: the message data is too large to fit in one transaction.
-  int& seq = seq_num_[tx.GetTxCode()];
-  int original_flags = tx.GetFlags();
-  GPR_ASSERT(original_flags & kFlagMessageData);
-  absl::string_view data = tx.GetMessageData();
-  size_t bytes_sent = 0;
-  while (bytes_sent < data.size()) {
-    if (!WaitForAcknowledgement()) {
-      return absl::InternalError("Timeout waiting for acknowledgement");
-    }
-    RETURN_IF_ERROR(binder_->PrepareTransaction());
-    WritableParcel* parcel = binder_->GetWritableParcel();
-    size_t size =
-        std::min(static_cast<size_t>(kBlockSize), data.size() - bytes_sent);
-    int flags = kFlagMessageData;
-    if (bytes_sent == 0) {
-      // This is the first transaction. Include initial metadata if there's any.
-      if (original_flags & kFlagPrefix) {
-        flags |= kFlagPrefix;
-      }
-    }
-    if (bytes_sent + kBlockSize >= data.size()) {
-      // This is the last transaction. Include trailing metadata if there's any.
-      if (original_flags & kFlagSuffix) {
-        flags |= kFlagSuffix;
-      }
-    } else {
-      // There are more messages to send.
-      flags |= kFlagMessageDataIsPartial;
-    }
-    RETURN_IF_ERROR(parcel->WriteInt32(flags));
-    RETURN_IF_ERROR(parcel->WriteInt32(seq++));
-    if (flags & kFlagPrefix) {
-      RETURN_IF_ERROR(WriteInitialMetadata(tx, parcel));
-    }
-    RETURN_IF_ERROR(
-        parcel->WriteByteArrayWithLength(data.substr(bytes_sent, size)));
-    if (flags & kFlagSuffix) {
-      RETURN_IF_ERROR(WriteTrailingMetadata(tx, parcel));
-    }
+  RETURN_IF_ERROR(fill_parcel(parcel));
+  if (tx_code.code >= static_cast<unsigned>(kFirstCallId)) {
     num_outgoing_bytes_ += parcel->GetDataSize();
-    RETURN_IF_ERROR(binder_->Transact(BinderTransportTxCode(tx.GetTxCode())));
-    bytes_sent += size;
   }
+  return binder_->Transact(tx_code);
+}
+
+absl::Status WireWriterImpl::RpcCallFastPath(std::unique_ptr<Transaction> tx) {
+  return MakeTransaction(
+      BinderTransportTxCode(tx->GetTxCode()),
+      [this, tx = tx.get()](WritableParcel* parcel) {
+        RETURN_IF_ERROR(parcel->WriteInt32(tx->GetFlags()));
+        RETURN_IF_ERROR(parcel->WriteInt32(seq_num_[tx->GetTxCode()]++));
+        if (tx->GetFlags() & kFlagPrefix) {
+          RETURN_IF_ERROR(WriteInitialMetadata(*tx, parcel));
+        }
+        if (tx->GetFlags() & kFlagMessageData) {
+          RETURN_IF_ERROR(
+              parcel->WriteByteArrayWithLength(tx->GetMessageData()));
+        }
+        if (tx->GetFlags() & kFlagSuffix) {
+          RETURN_IF_ERROR(WriteTrailingMetadata(*tx, parcel));
+        }
+        return absl::OkStatus();
+      });
+}
+
+struct RunChunkedTxArgs {
+  WireWriterImpl* writer;
+  std::unique_ptr<Transaction> tx;
+  // How many data in transaction's `data` field has been sent.
+  int64_t bytes_sent = 0;
+
+  // TODO: union?
+  bool is_ack_tx = false;
+  int64_t ack_num_bytes;
+};
+
+bool CanBeSentInOneTransaction(const Transaction& tx) {
+  return (tx.GetFlags() & kFlagMessageData) == 0 ||
+         tx.GetMessageData().size() <= WireWriterImpl::kBlockSize;
+}
+
+// Slow path: the message data is too large to fit in one transaction.
+absl::Status WriteChunkedTx(RunChunkedTxArgs* args, WritableParcel* parcel,
+                            bool* is_last_chunk) {
+  auto tx = args->tx.get();
+  // Transaction without data flag should go to fast path.
+  GPR_ASSERT(tx->GetFlags() & kFlagMessageData);
+  absl::string_view data = args->tx->GetMessageData();
+  int flags = kFlagMessageData;
+  if (args->bytes_sent == 0) {
+    // This is the first transaction. Include initial
+    // metadata if there's any.
+    if (tx->GetFlags() & kFlagPrefix) {
+      flags |= kFlagPrefix;
+    }
+  }
+  int64_t size = std::min<int64_t>(WireWriterImpl::kBlockSize,
+                                   data.size() - args->bytes_sent);
+  GPR_ASSERT(args->bytes_sent <= data.size());
+  if (args->bytes_sent + WireWriterImpl::kBlockSize >= data.size()) {
+    // This is the last transaction. Include trailing
+    // metadata if there's any.
+    if (tx->GetFlags() & kFlagSuffix) {
+      flags |= kFlagSuffix;
+    }
+    size = data.size() - args->bytes_sent;
+  } else {
+    // There are more messages to send.
+    flags |= kFlagMessageDataIsPartial;
+    *is_last_chunk = false;
+  }
+  RETURN_IF_ERROR(parcel->WriteInt32(flags));
+  RETURN_IF_ERROR(
+      parcel->WriteInt32(args->writer->seq_num_[tx->GetTxCode()]++));
+  if (flags & kFlagPrefix) {
+    RETURN_IF_ERROR(args->writer->WriteInitialMetadata(*tx, parcel));
+  }
+  RETURN_IF_ERROR(
+      parcel->WriteByteArrayWithLength(data.substr(args->bytes_sent, size)));
+  if (flags & kFlagSuffix) {
+    RETURN_IF_ERROR(args->writer->WriteTrailingMetadata(*tx, parcel));
+  }
+  args->bytes_sent += size;
+}
+
+void MakeTxLocked(void* arg, grpc_error_handle /*error*/) {
+  RunChunkedTxArgs* args = static_cast<RunChunkedTxArgs*>(arg);
+  args->writer->DecreaseCombinerTxCount();
+  if (args->is_ack_tx) {
+    absl::Status result = args->writer->MakeTransaction(
+        BinderTransportTxCode::ACKNOWLEDGE_BYTES,
+        [args](WritableParcel* parcel) {
+          RETURN_IF_ERROR(parcel->WriteInt64(args->ack_num_bytes));
+        });
+    if (!result.ok()) {
+      // TODO: log
+      GPR_ASSERT(false);
+    }
+    delete args;
+    return;
+  }
+  if (CanBeSentInOneTransaction(*args->tx.get())) {
+    args->writer->RpcCallFastPath(std::move(args->tx));
+    delete args;
+    return;
+  }
+  bool is_last_chunk = true;
+  absl::Status result = args->writer->MakeTransaction(
+      BinderTransportTxCode(args->tx->GetTxCode()),
+      [args, &is_last_chunk](WritableParcel* parcel) {
+        WriteChunkedTx(args, parcel, &is_last_chunk);
+        return absl::OkStatus();
+      });
+  if (!result.ok()) {
+    // TODO: log
+    GPR_ASSERT(false);
+  }
+  if (!is_last_chunk) {
+    args->writer->AddPendingTx(
+        GRPC_CLOSURE_CREATE(MakeTxLocked, args, nullptr));
+    args->writer->TryScheduleTransaction();
+  } else {
+    delete args;
+  }
+}
+
+void WireWriterImpl::AddPendingTx(grpc_closure* closure) {
+  grpc_core::MutexLock lock(&ack_mu_);
+  pending_out_tx_.push(closure);
+}
+
+void WireWriterImpl::DecreaseCombinerTxCount() {
+  grpc_core::MutexLock lock(&ack_mu_);
+  num_tx_in_combiner_--;
+}
+
+absl::Status WireWriterImpl::RpcCall(std::unique_ptr<Transaction> tx) {
+  // TODO(mingcl): check tx_code <= last call id
+  GPR_ASSERT(tx->GetTxCode() >= kFirstCallId);
+  auto args = new RunChunkedTxArgs();
+  args->is_ack_tx = false;
+  args->writer = this;
+  args->tx = std::move(tx);
+  {
+    grpc_core::MutexLock lock(&ack_mu_);
+    pending_out_tx_.push(GRPC_CLOSURE_CREATE(MakeTxLocked, args, nullptr));
+  }
+  TryScheduleTransaction();
   return absl::OkStatus();
 }
 
 absl::Status WireWriterImpl::SendAck(int64_t num_bytes) {
-  grpc_core::MutexLock lock(&mu_);
-  RETURN_IF_ERROR(binder_->PrepareTransaction());
-  WritableParcel* parcel = binder_->GetWritableParcel();
-  RETURN_IF_ERROR(parcel->WriteInt64(num_bytes));
-  return binder_->Transact(BinderTransportTxCode::ACKNOWLEDGE_BYTES);
+  auto args = new RunChunkedTxArgs();
+  args->is_ack_tx = true;
+  args->ack_num_bytes = num_bytes;
+  {
+    grpc_core::MutexLock lock(&ack_mu_);
+    pending_out_tx_.push(GRPC_CLOSURE_CREATE(MakeTxLocked, args, nullptr));
+  }
+  TryScheduleTransaction();
+  return absl::OkStatus();
 }
 
 void WireWriterImpl::OnAckReceived(int64_t num_bytes) {
-  grpc_core::MutexLock lock(&mu_);
-  num_acknowledged_bytes_ = std::max(num_acknowledged_bytes_, num_bytes);
-  cv_.Signal();
+  // DO NOT try to obtain `mu_` in this codepath! NDKBinder might call back to
+  // us when we are sending transaction
+  {
+    grpc_core::MutexLock lock(&ack_mu_);
+    num_acknowledged_bytes_ = std::max(num_acknowledged_bytes_, num_bytes);
+    if (num_acknowledged_bytes_ > num_outgoing_bytes_) {
+      // Something went wrong. The other end acked more bytes than we ever sent.
+      // TODO: Log error
+      GPR_ASSERT(false);
+    }
+  }
+  TryScheduleTransaction();
+}
+
+// TODO: proof liveness? all closure pushed into `pending_out_tx_` will
+// eventually be run.
+
+void WireWriterImpl::TryScheduleTransaction() {
+  grpc_core::MutexLock lock(&ack_mu_);
+  // TODO: explain: If "number of bytes already scheduled" - "acked bytes"
+  if (!pending_out_tx_.empty() &&
+      (num_scheduled_outgoing_bytes_ + num_tx_in_combiner_ * kBlockSize) -
+              num_acknowledged_bytes_ + kBlockSize <
+          kFlowControlWindowSize) {
+    combiner_->Run(pending_out_tx_.front(), GRPC_ERROR_NONE);
+    pending_out_tx_.pop();
+    num_tx_in_combiner_++;
+  }
 }
 
 }  // namespace grpc_binder
+
 #endif

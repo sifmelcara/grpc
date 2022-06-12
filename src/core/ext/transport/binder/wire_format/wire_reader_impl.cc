@@ -170,15 +170,14 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
 
   grpc_core::MutexLock lock(&mu_);
 
-  if (BinderTransportTxCode(code) != BinderTransportTxCode::SETUP_TRANSPORT &&
-      !connected_) {
+  if (code != BinderTransportTxCode::SETUP_TRANSPORT && !connected_) {
     return absl::InvalidArgumentError("Transports not connected yet");
   }
 
   // TODO(mingcl): See if we want to check the security policy for every RPC
   // call or just during transport setup.
 
-  switch (BinderTransportTxCode(code)) {
+  switch (code) {
     case BinderTransportTxCode::SETUP_TRANSPORT: {
       if (recvd_setup_transport_) {
         return absl::InvalidArgumentError(

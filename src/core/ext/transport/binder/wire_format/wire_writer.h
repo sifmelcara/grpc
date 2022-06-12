@@ -17,6 +17,7 @@
 
 #include <grpc/support/port_platform.h>
 
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -25,13 +26,15 @@
 #include "src/core/ext/transport/binder/wire_format/binder.h"
 #include "src/core/ext/transport/binder/wire_format/transaction.h"
 #include "src/core/lib/gprpp/sync.h"
+#include "src/core/lib/iomgr/combiner.h"
 
 namespace grpc_binder {
 
+// Member functions are thread safe.
 class WireWriter {
  public:
   virtual ~WireWriter() = default;
-  virtual absl::Status RpcCall(const Transaction& call) = 0;
+  virtual absl::Status RpcCall(std::unique_ptr<Transaction> call) = 0;
   virtual absl::Status SendAck(int64_t num_bytes) = 0;
   virtual void OnAckReceived(int64_t num_bytes) = 0;
 };
@@ -39,18 +42,24 @@ class WireWriter {
 class WireWriterImpl : public WireWriter {
  public:
   explicit WireWriterImpl(std::unique_ptr<Binder> binder);
-  absl::Status RpcCall(const Transaction& tx) override;
-  absl::Status SendAck(int64_t num_bytes) override;
+  virtual absl::Status RpcCall(std::unique_ptr<Transaction> call) override;
+  virtual absl::Status SendAck(int64_t num_bytes) override;
+  absl::Status RpcCallLocked(const Transaction& tx);
+  absl::Status SendAckLocked(int64_t num_bytes);
   void OnAckReceived(int64_t num_bytes) override;
 
-  // Split long message into chunks of size 16k. This doesn't necessarily have
-  // to be the same as the flow control acknowledgement size, but it should not
-  // exceed 128k.
-  static const int64_t kBlockSize;
-  // Flow control allows sending at most 128k between acknowledgements.
-  static const int64_t kFlowControlWindowSize;
+  // Only called in wire_writer.cc
+  void AddPendingTx(grpc_closure* closure);
+  void DecreaseCombinerTxCount();
+  void TryScheduleTransaction();
+  int num_tx_in_combiner_;
+  // Fast path: send data in one transaction.
+  absl::Status RpcCallFastPath(std::unique_ptr<Transaction> tx)
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
 
- private:
+  absl::Status MakeTransaction(
+      BinderTransportTxCode tx_code,
+      std::function<absl::Status(WritableParcel*)> fill_parcel);
   absl::Status WriteInitialMetadata(const Transaction& tx,
                                     WritableParcel* parcel)
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
@@ -58,25 +67,27 @@ class WireWriterImpl : public WireWriter {
                                      WritableParcel* parcel)
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
 
-  bool CanBeSentInOneTransaction(const Transaction& tx) const;
-  absl::Status RpcCallFastPath(const Transaction& tx)
-      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
+  // Split long message into chunks of size 16k. This doesn't necessarily have
+  // to be the same as the flow control acknowledgement size, but it should not
+  // exceed 128k.
+  static const int64_t kBlockSize;
 
-  // Wait for acknowledgement from the other side for a while (the timeout is
-  // currently set to 10ms for debugability). Returns true if we are able to
-  // proceed, and false otherwise.
-  //
-  // TODO(waynetu): Currently, RpcCall() will fail if we are blocked for 10ms.
-  // In the future, we should queue the transactions and release them later when
-  // acknowledgement comes.
-  bool WaitForAcknowledgement() ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
+  // Flow control allows sending at most 128k between acknowledgements.
+  static const int64_t kFlowControlWindowSize;
 
-  grpc_core::Mutex mu_;
-  grpc_core::CondVar cv_;
-  std::unique_ptr<Binder> binder_ ABSL_GUARDED_BY(mu_);
   absl::flat_hash_map<int, int> seq_num_ ABSL_GUARDED_BY(mu_);
+
+ private:
+  grpc_core::Mutex mu_;
+  std::unique_ptr<Binder> binder_ ABSL_GUARDED_BY(mu_);
   int64_t num_outgoing_bytes_ ABSL_GUARDED_BY(mu_) = 0;
-  int64_t num_acknowledged_bytes_ ABSL_GUARDED_BY(mu_) = 0;
+
+  grpc_core::Mutex ack_mu_;
+  int64_t num_acknowledged_bytes_ ABSL_GUARDED_BY(ack_mu_) = 0;
+  int64_t num_scheduled_outgoing_bytes_ ABSL_GUARDED_BY(ack_mu_) = 0;
+
+  grpc_core::Combiner* combiner_;
+  std::queue<grpc_closure*> pending_out_tx_ ABSL_GUARDED_BY(ack_mu_);
 };
 
 }  // namespace grpc_binder
