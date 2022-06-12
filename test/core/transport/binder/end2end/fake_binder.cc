@@ -191,7 +191,7 @@ void TransactionProcessor::WaitForNextTransaction() {
 void TransactionProcessor::Flush() {
   while (true) {
     FakeEndpoint* target = nullptr;
-    BinderTransportTxCode tx_code{};
+    BinderTransportTxCode tx_code{0};
     FakeData data;
     mu_.Lock();
     if (tx_queue_.empty()) {
@@ -215,7 +215,7 @@ void TransactionProcessor::Flush() {
 void TransactionProcessor::ProcessLoop() {
   while (!terminated_.load(std::memory_order_seq_cst)) {
     FakeEndpoint* target = nullptr;
-    BinderTransportTxCode tx_code{};
+    BinderTransportTxCode tx_code{0};
     FakeData data;
     mu_.Lock();
     if (tx_queue_.empty()) {
