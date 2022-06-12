@@ -156,6 +156,7 @@ TransactionProcessor::TransactionProcessor(absl::Duration delay)
       tx_thread_(
           "process-thread",
           [](void* arg) {
+            grpc_core::ExecCtx exec_ctx;
             auto* self = static_cast<TransactionProcessor*>(arg);
             self->ProcessLoop();
           },
@@ -191,7 +192,7 @@ void TransactionProcessor::WaitForNextTransaction() {
 void TransactionProcessor::Flush() {
   while (true) {
     FakeEndpoint* target = nullptr;
-    BinderTransportTxCode tx_code{};
+    BinderTransportTxCode tx_code{0};
     FakeData data;
     mu_.Lock();
     if (tx_queue_.empty()) {
@@ -215,7 +216,7 @@ void TransactionProcessor::Flush() {
 void TransactionProcessor::ProcessLoop() {
   while (!terminated_.load(std::memory_order_seq_cst)) {
     FakeEndpoint* target = nullptr;
-    BinderTransportTxCode tx_code{};
+    BinderTransportTxCode tx_code{0};
     FakeData data;
     mu_.Lock();
     if (tx_queue_.empty()) {
@@ -233,6 +234,7 @@ void TransactionProcessor::ProcessLoop() {
         static_cast<PersistentFakeTransactionReceiver*>(target->owner);
     auto parcel = absl::make_unique<FakeReadableParcel>(std::move(data));
     tx_receiver->Receive(tx_code, parcel.get()).IgnoreError();
+    grpc_core::ExecCtx::Get()->Flush();
   }
   Flush();
 }

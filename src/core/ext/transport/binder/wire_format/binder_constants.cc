@@ -25,5 +25,12 @@ namespace grpc_binder {
 
 const int kFirstCallId = FIRST_CALL_TRANSACTION + 1000;
 
+/*
+int SETUP_TRANSPORT;
+int SHUTDOWN_TRANSPORT;
+int ACKNOWLEDGE_BYTES;
+int PING;
+int PING_RESPONSE;*/
+
 }  // namespace grpc_binder
 #endif

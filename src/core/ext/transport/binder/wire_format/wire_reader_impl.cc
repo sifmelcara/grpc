@@ -80,7 +80,9 @@ WireReaderImpl::WireReaderImpl(
     : transport_stream_receiver_(std::move(transport_stream_receiver)),
       is_client_(is_client),
       security_policy_(security_policy),
-      on_destruct_callback_(on_destruct_callback) {}
+      on_destruct_callback_(on_destruct_callback) {
+  gpr_log(GPR_INFO, "%s mu_ = %p", __func__, &mu_);
+}
 
 WireReaderImpl::~WireReaderImpl() {
   if (on_destruct_callback_) {
@@ -136,7 +138,7 @@ void WireReaderImpl::SendSetupTransport(Binder* binder) {
   gpr_log(GPR_INFO, "AParcel_writeStrongBinder = %d",
           writable_parcel->WriteBinder(tx_receiver_.get()).ok());
   gpr_log(GPR_INFO, "AIBinder_transact = %d",
-          binder->Transact(BinderTransportTxCode::SETUP_TRANSPORT).ok());
+          binder->Transact(SETUP_TRANSPORT).ok());
 }
 
 std::unique_ptr<Binder> WireReaderImpl::RecvSetupTransport() {
@@ -158,28 +160,27 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
     return ProcessStreamingTransaction(code, parcel);
   }
 
-  if (!(code >= static_cast<transaction_code_t>(
-                    BinderTransportTxCode::SETUP_TRANSPORT) &&
-        code <= static_cast<transaction_code_t>(
-                    BinderTransportTxCode::PING_RESPONSE))) {
+  if (!(code >= static_cast<transaction_code_t>(SETUP_TRANSPORT) &&
+        code <= static_cast<transaction_code_t>(PING_RESPONSE))) {
     gpr_log(GPR_INFO,
             "Received unknown control message. Shutdown transport gracefully.");
     // TODO(waynetu): Shutdown transport gracefully.
     return absl::OkStatus();
   }
 
-  grpc_core::MutexLock lock(&mu_);
-
-  if (BinderTransportTxCode(code) != BinderTransportTxCode::SETUP_TRANSPORT &&
-      !connected_) {
-    return absl::InvalidArgumentError("Transports not connected yet");
+  {
+    grpc_core::MutexLock lock(&mu_);
+    if (code != SETUP_TRANSPORT && !connected_) {
+      return absl::InvalidArgumentError("Transports not connected yet");
+    }
   }
 
   // TODO(mingcl): See if we want to check the security policy for every RPC
   // call or just during transport setup.
 
-  switch (BinderTransportTxCode(code)) {
-    case BinderTransportTxCode::SETUP_TRANSPORT: {
+  switch (code) {
+    case SETUP_TRANSPORT: {
+      grpc_core::MutexLock lock(&mu_);
       if (recvd_setup_transport_) {
         return absl::InvalidArgumentError(
             "Already received a SETUP_TRANSPORT request");
@@ -215,12 +216,12 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
       connection_noti_.Notify();
       break;
     }
-    case BinderTransportTxCode::SHUTDOWN_TRANSPORT: {
+    case SHUTDOWN_TRANSPORT: {
       gpr_log(GPR_ERROR,
               "Received SHUTDOWN_TRANSPORT request but not implemented yet.");
       return absl::UnimplementedError("SHUTDOWN_TRANSPORT");
     }
-    case BinderTransportTxCode::ACKNOWLEDGE_BYTES: {
+    case ACKNOWLEDGE_BYTES: {
       int64_t num_bytes = -1;
       RETURN_IF_ERROR(parcel->ReadInt64(&num_bytes));
       gpr_log(GPR_INFO, "received acknowledge bytes = %lld",
@@ -228,7 +229,7 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
       wire_writer_->OnAckReceived(num_bytes);
       break;
     }
-    case BinderTransportTxCode::PING: {
+    case PING: {
       if (is_client_) {
         return absl::FailedPreconditionError("Receive PING request in client");
       }
@@ -238,7 +239,7 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
       // TODO(waynetu): Ping back.
       break;
     }
-    case BinderTransportTxCode::PING_RESPONSE: {
+    case PING_RESPONSE: {
       int value = -1;
       RETURN_IF_ERROR(parcel->ReadInt32(&value));
       gpr_log(GPR_INFO, "received ping response = %d", value);
@@ -250,50 +251,70 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
 
 absl::Status WireReaderImpl::ProcessStreamingTransaction(
     transaction_code_t code, ReadableParcel* parcel) {
-  grpc_core::MutexLock lock(&mu_);
-  if (!connected_) {
-    return absl::InvalidArgumentError("Transports not connected yet");
-  }
+  bool need_to_send_ack = false;
+  int64_t num_bytes = 0;
+  absl::Status tx_process_result;
+  {
+    grpc_core::MutexLock lock(&mu_);
+    if (!connected_) {
+      return absl::InvalidArgumentError("Transports not connected yet");
+    }
 
-  // Indicate which callbacks should be cancelled. It will be initialized as the
-  // flags the in-coming transaction carries, and when a particular callback is
-  // completed, the corresponding bit in cancellation_flag will be set to 0 so
-  // that we won't cancel it afterward.
-  int cancellation_flags = 0;
-  absl::Status status =
-      ProcessStreamingTransactionImpl(code, parcel, &cancellation_flags);
-  if (!status.ok()) {
-    gpr_log(GPR_ERROR, "Failed to process streaming transaction: %s",
-            status.ToString().c_str());
-    // Something went wrong when receiving transaction. Cancel failed requests.
-    if (cancellation_flags & kFlagPrefix) {
-      gpr_log(GPR_INFO, "cancelling initial metadata");
-      transport_stream_receiver_->NotifyRecvInitialMetadata(code, status);
+    // Indicate which callbacks should be cancelled. It will be initialized as
+    // the flags the in-coming transaction carries, and when a particular
+    // callback is completed, the corresponding bit in cancellation_flag will be
+    // set to 0 so that we won't cancel it afterward.
+    int cancellation_flags = 0;
+    tx_process_result =
+        ProcessStreamingTransactionImpl(code, parcel, &cancellation_flags);
+    if (!tx_process_result.ok()) {
+      gpr_log(GPR_ERROR, "Failed to process streaming transaction: %s",
+              tx_process_result.ToString().c_str());
+      // Something went wrong when receiving transaction. Cancel failed
+      // requests.
+      if (cancellation_flags & kFlagPrefix) {
+        gpr_log(GPR_INFO, "cancelling initial metadata");
+        transport_stream_receiver_->NotifyRecvInitialMetadata(
+            code, tx_process_result);
+      }
+      if (cancellation_flags & kFlagMessageData) {
+        gpr_log(GPR_INFO, "cancelling message data");
+        transport_stream_receiver_->NotifyRecvMessage(code, tx_process_result);
+      }
+      if (cancellation_flags & kFlagSuffix) {
+        gpr_log(GPR_INFO, "cancelling trailing metadata");
+        transport_stream_receiver_->NotifyRecvTrailingMetadata(
+            code, tx_process_result, 0);
+      }
     }
-    if (cancellation_flags & kFlagMessageData) {
-      gpr_log(GPR_INFO, "cancelling message data");
-      transport_stream_receiver_->NotifyRecvMessage(code, status);
-    }
-    if (cancellation_flags & kFlagSuffix) {
-      gpr_log(GPR_INFO, "cancelling trailing metadata");
-      transport_stream_receiver_->NotifyRecvTrailingMetadata(code, status, 0);
+    if ((num_incoming_bytes_ - num_acknowledged_bytes_) >=
+        kFlowControlAckBytes) {
+      need_to_send_ack = true;
+      num_bytes = num_incoming_bytes_;
+      num_acknowledged_bytes_ = num_incoming_bytes_;
     }
   }
-  if ((num_incoming_bytes_ - num_acknowledged_bytes_) >= kFlowControlAckBytes) {
+  if (need_to_send_ack) {
     GPR_ASSERT(wire_writer_);
-    absl::Status ack_status = wire_writer_->SendAck(num_incoming_bytes_);
-    if (status.ok()) {
-      status = ack_status;
+    // wire_writer_ should not be accessed while holding mu_!
+    // Otherwise, it is possible that
+    // 1. wire_writer_::mu_ is acquired before mu_ (NDK call back during
+    // transaction)
+    // 2. mu_ is acquired before wire_writer_::mu_ (e.g. Java call back us, and
+    // we call WireWriter::SendAck which will try to acquire wire_writer_::mu_)
+    absl::Status ack_status = wire_writer_->SendAck(num_bytes);
+    if (tx_process_result.ok()) {
+      return ack_status;
     }
-    num_acknowledged_bytes_ = num_incoming_bytes_;
   }
-  return status;
+  return tx_process_result;
 }
 
 absl::Status WireReaderImpl::ProcessStreamingTransactionImpl(
     transaction_code_t code, ReadableParcel* parcel, int* cancellation_flags) {
   GPR_ASSERT(cancellation_flags);
   num_incoming_bytes_ += parcel->GetDataSize();
+  gpr_log(GPR_INFO, "Total incoming bytes: %ld", num_incoming_bytes_);
 
   int flags;
   RETURN_IF_ERROR(parcel->ReadInt32(&flags));
