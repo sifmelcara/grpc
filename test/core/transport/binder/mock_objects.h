@@ -78,7 +78,7 @@ class MockTransactionReceiver : public TransactionReceiver {
   explicit MockTransactionReceiver(OnTransactCb transact_cb,
                                    BinderTransportTxCode code,
                                    MockReadableParcel* output) {
-    if (code.code == BinderTransportTxCode::SETUP_TRANSPORT) {
+    if (code.code == SETUP_TRANSPORT) {
       EXPECT_CALL(*output, ReadInt32).WillOnce([](int32_t* version) {
         *version = 1;
         return absl::OkStatus();

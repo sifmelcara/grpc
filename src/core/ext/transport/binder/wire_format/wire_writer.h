@@ -39,9 +39,12 @@ class WireWriter {
   virtual void OnAckReceived(int64_t num_bytes) = 0;
 };
 
+struct RunChunkedTxArgs;
+
 class WireWriterImpl : public WireWriter {
  public:
   explicit WireWriterImpl(std::unique_ptr<Binder> binder);
+  ~WireWriterImpl() override;
   virtual absl::Status RpcCall(std::unique_ptr<Transaction> call) override;
   virtual absl::Status SendAck(int64_t num_bytes) override;
   absl::Status RpcCallLocked(const Transaction& tx);
@@ -52,10 +55,9 @@ class WireWriterImpl : public WireWriter {
   void AddPendingTx(grpc_closure* closure);
   void DecreaseCombinerTxCount();
   void TryScheduleTransaction();
-  int num_tx_in_combiner_;
+  int num_tx_in_combiner_ = 0;
   // Fast path: send data in one transaction.
-  absl::Status RpcCallFastPath(std::unique_ptr<Transaction> tx)
-      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
+  absl::Status RpcCallFastPath(std::unique_ptr<Transaction> tx);
 
   absl::Status MakeTransaction(
       BinderTransportTxCode tx_code,
@@ -66,6 +68,8 @@ class WireWriterImpl : public WireWriter {
   absl::Status WriteTrailingMetadata(const Transaction& tx,
                                      WritableParcel* parcel)
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
+  absl::Status WriteChunkedTx(RunChunkedTxArgs* args, WritableParcel* parcel,
+                              bool* is_last_chunk);
 
   // Split long message into chunks of size 16k. This doesn't necessarily have
   // to be the same as the flow control acknowledgement size, but it should not
@@ -80,7 +84,7 @@ class WireWriterImpl : public WireWriter {
  private:
   grpc_core::Mutex mu_;
   std::unique_ptr<Binder> binder_ ABSL_GUARDED_BY(mu_);
-  int64_t num_outgoing_bytes_ ABSL_GUARDED_BY(mu_) = 0;
+  std::atomic_int64_t num_outgoing_bytes_{0};
 
   grpc_core::Mutex ack_mu_;
   int64_t num_acknowledged_bytes_ ABSL_GUARDED_BY(ack_mu_) = 0;

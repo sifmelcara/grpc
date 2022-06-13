@@ -136,7 +136,7 @@ void WireReaderImpl::SendSetupTransport(Binder* binder) {
   gpr_log(GPR_INFO, "AParcel_writeStrongBinder = %d",
           writable_parcel->WriteBinder(tx_receiver_.get()).ok());
   gpr_log(GPR_INFO, "AIBinder_transact = %d",
-          binder->Transact(BinderTransportTxCode::SETUP_TRANSPORT).ok());
+          binder->Transact(SETUP_TRANSPORT).ok());
 }
 
 std::unique_ptr<Binder> WireReaderImpl::RecvSetupTransport() {
@@ -159,9 +159,9 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
   }
 
   if (!(code >= static_cast<transaction_code_t>(
-                    BinderTransportTxCode::SETUP_TRANSPORT) &&
+                    SETUP_TRANSPORT) &&
         code <= static_cast<transaction_code_t>(
-                    BinderTransportTxCode::PING_RESPONSE))) {
+                    PING_RESPONSE))) {
     gpr_log(GPR_INFO,
             "Received unknown control message. Shutdown transport gracefully.");
     // TODO(waynetu): Shutdown transport gracefully.
@@ -170,7 +170,7 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
 
   grpc_core::MutexLock lock(&mu_);
 
-  if (code != BinderTransportTxCode::SETUP_TRANSPORT && !connected_) {
+  if (code != SETUP_TRANSPORT && !connected_) {
     return absl::InvalidArgumentError("Transports not connected yet");
   }
 
@@ -178,7 +178,7 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
   // call or just during transport setup.
 
   switch (code) {
-    case BinderTransportTxCode::SETUP_TRANSPORT: {
+    case SETUP_TRANSPORT: {
       if (recvd_setup_transport_) {
         return absl::InvalidArgumentError(
             "Already received a SETUP_TRANSPORT request");
@@ -214,12 +214,12 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
       connection_noti_.Notify();
       break;
     }
-    case BinderTransportTxCode::SHUTDOWN_TRANSPORT: {
+    case SHUTDOWN_TRANSPORT: {
       gpr_log(GPR_ERROR,
               "Received SHUTDOWN_TRANSPORT request but not implemented yet.");
       return absl::UnimplementedError("SHUTDOWN_TRANSPORT");
     }
-    case BinderTransportTxCode::ACKNOWLEDGE_BYTES: {
+    case ACKNOWLEDGE_BYTES: {
       int64_t num_bytes = -1;
       RETURN_IF_ERROR(parcel->ReadInt64(&num_bytes));
       gpr_log(GPR_INFO, "received acknowledge bytes = %lld",
@@ -227,7 +227,7 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
       wire_writer_->OnAckReceived(num_bytes);
       break;
     }
-    case BinderTransportTxCode::PING: {
+    case PING: {
       if (is_client_) {
         return absl::FailedPreconditionError("Receive PING request in client");
       }
@@ -237,7 +237,7 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
       // TODO(waynetu): Ping back.
       break;
     }
-    case BinderTransportTxCode::PING_RESPONSE: {
+    case PING_RESPONSE: {
       int value = -1;
       RETURN_IF_ERROR(parcel->ReadInt32(&value));
       gpr_log(GPR_INFO, "received ping response = %d", value);

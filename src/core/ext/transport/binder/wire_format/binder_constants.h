@@ -34,12 +34,19 @@ struct BinderTransportTxCode {
     return this->code == other.code;
   }
   int code;
-  static constexpr int SETUP_TRANSPORT = 1;
-  static constexpr int SHUTDOWN_TRANSPORT = 2;
-  static constexpr int ACKNOWLEDGE_BYTES = 3;
-  static constexpr int PING = 4;
-  static constexpr int PING_RESPONSE = 5;
 };
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++17-extensions"
+
+// Maybe do something like `enum : int { kMyNumber = 42 };` instead?
+inline constexpr int SETUP_TRANSPORT = 1;
+inline constexpr int SHUTDOWN_TRANSPORT = 2;
+inline constexpr int ACKNOWLEDGE_BYTES = 3;
+inline constexpr int PING = 4;
+inline constexpr int PING_RESPONSE = 5;
+
+#pragma clang diagnostic pop
 
 ABSL_CONST_INIT extern const int kFirstCallId;
 
