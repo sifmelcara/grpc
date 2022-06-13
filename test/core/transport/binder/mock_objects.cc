@@ -48,7 +48,7 @@ MockBinder::MockBinder() {
           [this](grpc_core::RefCountedPtr<WireReader> /*wire_reader_ref*/,
                  TransactionReceiver::OnTransactCb cb) {
             return absl::make_unique<MockTransactionReceiver>(
-                cb, BinderTransportTxCode::SETUP_TRANSPORT, &mock_output_);
+                cb, SETUP_TRANSPORT, &mock_output_);
           });
 }
 

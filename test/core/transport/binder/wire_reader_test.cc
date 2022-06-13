@@ -138,7 +138,7 @@ TEST_F(WireReaderTest, ProcessTransactionControlMessagePingResponse) {
   UnblockSetupTransport();
   EXPECT_CALL(mock_readable_parcel_, ReadInt32);
   EXPECT_TRUE(
-      CallProcessTransaction(BinderTransportTxCode::PING_RESPONSE).ok());
+      CallProcessTransaction(PING_RESPONSE).ok());
 }
 
 TEST_F(WireReaderTest, ProcessTransactionServerRpcDataEmptyFlagIgnored) {

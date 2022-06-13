@@ -117,7 +117,7 @@ void FuzzingLoop(
         absl::make_unique<ReadableParcelForFuzzing>(
             incoming_parcels.setup_transport_transaction().parcel());
     callback(static_cast<transaction_code_t>(
-                 grpc_binder::BinderTransportTxCode::SETUP_TRANSPORT),
+                 grpc_binder::SETUP_TRANSPORT),
              parcel.get(),
              /*uid=*/incoming_parcels.setup_transport_transaction().uid())
         .IgnoreError();
