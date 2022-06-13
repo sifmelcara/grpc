@@ -115,7 +115,7 @@ struct RunChunkedTxArgs {
   // How many data in transaction's `data` field has been sent.
   int64_t bytes_sent = 0;
 
-  // TODO: union?
+  // TODO(unknown): union?
   bool is_ack_tx = false;
   int64_t ack_num_bytes;
 };
@@ -185,17 +185,17 @@ void MakeTxLocked(void* arg, grpc_error_handle /*error*/) {
           return absl::OkStatus();
         });
     if (!result.ok()) {
-      // TODO: log
+      // TODO(unknown): log
       GPR_ASSERT(false);
     }
     delete args;
     return;
   }
-  if (CanBeSentInOneTransaction(*args->tx.get())) {
+  if (CanBeSentInOneTransaction(*args->tx)) {
     absl::Status result = args->writer->RpcCallFastPath(std::move(args->tx));
     delete args;
     if (!result.ok()) {
-      // TODO: log
+      // TODO(unknown): log
       GPR_ASSERT(false);
     }
     return;
@@ -207,7 +207,7 @@ void MakeTxLocked(void* arg, grpc_error_handle /*error*/) {
         return args->writer->WriteChunkedTx(args, parcel, &is_last_chunk);
       });
   if (!result.ok()) {
-    // TODO: log
+    // TODO(unknown): log
     GPR_ASSERT(false);
   }
   if (!is_last_chunk) {
@@ -264,26 +264,26 @@ void WireWriterImpl::OnAckReceived(int64_t num_bytes) {
     num_acknowledged_bytes_ = std::max(num_acknowledged_bytes_, num_bytes);
     if (num_acknowledged_bytes_ > num_outgoing_bytes_) {
       // Something went wrong. The other end acked more bytes than we ever sent.
-      // TODO: Log error
+      // TODO(unknown): Log error
       GPR_ASSERT(false);
     }
   }
   TryScheduleTransaction();
 }
 
-// TODO: proof liveness? all closure pushed into `pending_out_tx_` will
+// TODO(unknown): proof liveness? all closure pushed into `pending_out_tx_` will
 // eventually be run.
 
 void WireWriterImpl::TryScheduleTransaction() {
   gpr_log(GPR_INFO, "Trying to schedule transaction");
   grpc_core::MutexLock lock(&ack_mu_);
-  // TODO: explain: If "number of bytes already scheduled" - "acked bytes"
-  // Number of bytes eventually will be inside NDK buffer assuming
-  // all tasks in combiner will be scheduled and there is no new ACK.
+  // TODO(unknown): explain: If "number of bytes already scheduled" - "acked
+  // bytes" Number of bytes eventually will be inside NDK buffer assuming all
+  // tasks in combiner will be scheduled and there is no new ACK.
   int64_t num_bytes_in_ndk_buffer =
       (num_scheduled_outgoing_bytes_ + num_tx_in_combiner_ * kBlockSize) -
       num_acknowledged_bytes_;
-  // TODO: Don't assert this
+  // TODO(unknown): Don't assert this
   GPR_ASSERT(num_bytes_in_ndk_buffer >= 0);
   if (!pending_out_tx_.empty() &&
       (num_bytes_in_ndk_buffer + kBlockSize < kFlowControlWindowSize)) {
