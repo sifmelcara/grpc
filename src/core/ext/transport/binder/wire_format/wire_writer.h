@@ -42,8 +42,8 @@ class WireWriter {
 class WireWriterImpl : public WireWriter {
  public:
   explicit WireWriterImpl(std::unique_ptr<Binder> binder);
-  virtual absl::Status RpcCall(std::unique_ptr<Transaction> call) override;
-  virtual absl::Status SendAck(int64_t num_bytes) override;
+  absl::Status RpcCall(std::unique_ptr<Transaction> call) override;
+  absl::Status SendAck(int64_t num_bytes) override;
   absl::Status RpcCallLocked(const Transaction& tx);
   absl::Status SendAckLocked(int64_t num_bytes);
   void OnAckReceived(int64_t num_bytes) override;

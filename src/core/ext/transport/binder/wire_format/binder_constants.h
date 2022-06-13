@@ -29,7 +29,7 @@ ABSL_CONST_INIT extern const int LAST_CALL_TRANSACTION;
 namespace grpc_binder {
 
 struct BinderTransportTxCode {
-  BinderTransportTxCode(int code) : code(code){};
+  explicit BinderTransportTxCode(int code) : code(code){};
   bool operator==(const BinderTransportTxCode& other) const {
     return this->code == other.code;
   }
