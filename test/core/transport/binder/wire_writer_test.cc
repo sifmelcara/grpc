@@ -71,6 +71,7 @@ TEST(WireWriterTest, RpcCall) {
     auto tx = std::make_unique<Transaction>(kFirstCallId, /*is_client=*/true);
     EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
     sequence_number++;
+    grpc_core::ExecCtx::Get()->Flush();
   }
   {
     // flag
@@ -106,6 +107,7 @@ TEST(WireWriterTest, RpcCall) {
     tx->SetPrefix(kMetadata);
     tx->SetMethodRef("/example/method/ref");
     EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
+    grpc_core::ExecCtx::Get()->Flush();
   }
   {
     // flag
@@ -120,6 +122,7 @@ TEST(WireWriterTest, RpcCall) {
     tx->SetData("data");
     EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
     sequence_number++;
+    grpc_core::ExecCtx::Get()->Flush();
   }
   {
     // flag
@@ -133,6 +136,7 @@ TEST(WireWriterTest, RpcCall) {
     tx->SetSuffix({});
     EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
     sequence_number++;
+    grpc_core::ExecCtx::Get()->Flush();
   }
   {
     // flag
@@ -174,6 +178,7 @@ TEST(WireWriterTest, RpcCall) {
     tx->SetSuffix({});
     EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
     sequence_number++;
+    grpc_core::ExecCtx::Get()->Flush();
   }
 
   // Really large message
@@ -208,8 +213,9 @@ TEST(WireWriterTest, RpcCall) {
         std::make_unique<Transaction>(kFirstCallId + 2, /*is_client=*/true);
     tx->SetData(std::string(2 * WireWriterImpl::kBlockSize + 1, 'a'));
     EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
+    grpc_core::ExecCtx::Get()->Flush();
   }
-#if 0
+#if 1
   // Really large message with metadata
   {
     EXPECT_CALL(
@@ -249,9 +255,11 @@ TEST(WireWriterTest, RpcCall) {
     tx->SetData(std::string(2 * WireWriterImpl::kBlockSize + 1, 'a'));
     tx->SetSuffix({});
     EXPECT_TRUE(wire_writer.RpcCall(std::move(tx)).ok());
+    grpc_core::ExecCtx::Get()->Flush();
   }
 #endif
   grpc_core::ExecCtx::Get()->Flush();
+  init_lib.shutdown();
 }
 
 }  // namespace grpc_binder
