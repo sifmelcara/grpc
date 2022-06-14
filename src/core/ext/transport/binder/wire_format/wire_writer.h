@@ -53,9 +53,9 @@ class WireWriterImpl : public WireWriter {
 
   // Only called in wire_writer.cc
   void AddPendingTx(grpc_closure* closure);
-  void DecreaseCombinerTxCount();
+  void DecreaseNonAckCombinerTxCount();
   void TryScheduleTransaction();
-  int num_tx_in_combiner_ = 0;
+  int num_non_ack_tx_in_combiner_ = 0;
   // Fast path: send data in one transaction.
   absl::Status RpcCallFastPath(std::unique_ptr<Transaction> tx);
 
@@ -69,7 +69,9 @@ class WireWriterImpl : public WireWriter {
                                      WritableParcel* parcel)
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
   absl::Status WriteChunkedTx(RunChunkedTxArgs* args, WritableParcel* parcel,
-                              bool* is_last_chunk);
+                              bool* is_last_chunk)
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
+  void MakeTx(RunChunkedTxArgs* arg);
 
   // Split long message into chunks of size 16k. This doesn't necessarily have
   // to be the same as the flow control acknowledgement size, but it should not
@@ -88,7 +90,6 @@ class WireWriterImpl : public WireWriter {
 
   grpc_core::Mutex ack_mu_;
   int64_t num_acknowledged_bytes_ ABSL_GUARDED_BY(ack_mu_) = 0;
-  int64_t num_scheduled_outgoing_bytes_ ABSL_GUARDED_BY(ack_mu_) = 0;
 
   grpc_core::Combiner* combiner_;
   std::queue<grpc_closure*> pending_out_tx_ ABSL_GUARDED_BY(ack_mu_);
