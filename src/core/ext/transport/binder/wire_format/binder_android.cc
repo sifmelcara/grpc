@@ -205,7 +205,7 @@ absl::Status BinderAndroid::Transact(BinderTransportTxCode tx_code) {
   ndk_util::AParcel* unused_output_parcel;
   absl::Status result =
       (ndk_util::AIBinder_transact(
-           binder, static_cast<transaction_code_t>(tx_code),
+           binder, static_cast<transaction_code_t>(tx_code.code),
            &input_parcel_->parcel_, &unused_output_parcel,
            ndk_util::FLAG_ONEWAY) == ndk_util::STATUS_OK)
           ? absl::OkStatus()

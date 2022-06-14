@@ -45,7 +45,8 @@ struct RunChunkedTxArgs {
 
 bool CanBeSentInOneTransaction(const Transaction& tx) {
   return (tx.GetFlags() & kFlagMessageData) == 0 ||
-         tx.GetMessageData().size() <= WireWriterImpl::kBlockSize;
+         static_cast<int64_t>(tx.GetMessageData().size()) <=
+             WireWriterImpl::kBlockSize;
 }
 
 void MakeTxLocked(void* arg, grpc_error_handle /*error*/) {
@@ -108,7 +109,7 @@ absl::Status WireWriterImpl::MakeTransaction(
   WritableParcel* parcel = binder_->GetWritableParcel();
   RETURN_IF_ERROR(fill_parcel(parcel));
   // Only stream transaction is accounted in flow control spec.
-  if (tx_code.code >= static_cast<unsigned>(kFirstCallId)) {
+  if (tx_code.code >= static_cast<int64_t>(kFirstCallId)) {
     num_outgoing_bytes_ += parcel->GetDataSize();
     gpr_log(GPR_INFO, "num_outgoing_bytes_: %ld", num_outgoing_bytes_.load());
   }
@@ -158,8 +159,9 @@ absl::Status WireWriterImpl::WriteChunkedTx(RunChunkedTxArgs* args,
   // a little bit off.
   int64_t size = std::min<int64_t>(WireWriterImpl::kBlockSize,
                                    data.size() - args->bytes_sent);
-  GPR_ASSERT(args->bytes_sent <= data.size());
-  if (args->bytes_sent + WireWriterImpl::kBlockSize >= data.size()) {
+  GPR_ASSERT(args->bytes_sent <= static_cast<int64_t>(data.size()));
+  if (args->bytes_sent + WireWriterImpl::kBlockSize >=
+      static_cast<int64_t>(data.size())) {
     // This is the last transaction. Include trailing
     // metadata if there's any.
     if (tx->GetFlags() & kFlagSuffix) {
@@ -281,7 +283,8 @@ absl::Status WireWriterImpl::SendAck(int64_t num_bytes) {
   return absl::OkStatus();
 }
 
-// TODO: Do we need to flush the combiner during NDKBinder's callback?
+// TODO: Do we need to flush the combiner during NDKBinder's callback? Probably
+// need TLS variable.
 void WireWriterImpl::OnAckReceived(int64_t num_bytes) {
   gpr_log(GPR_INFO, "OnAckReceived %ld", num_bytes);
   // DO NOT try to obtain `mu_` in this codepath! NDKBinder might call back to
@@ -300,6 +303,12 @@ void WireWriterImpl::OnAckReceived(int64_t num_bytes) {
 
 // TODO: proof liveness? all closure pushed into `pending_out_tx_` will
 // eventually be run.
+// 1. Prove that if
+//      a. OnAckReceived will be called for every 16KB
+//      b. After RpcCall, the tasks in combiner will be run.
+//    Then all message in RpcCall will be write to NdkBinder.
+// 2. Prove that for every OnAckReceived call, the ack will be write to
+// NdkBinder regardless of what WireWriterImpl's interfaces are called.
 
 void WireWriterImpl::TryScheduleTransaction() {
   gpr_log(GPR_INFO, "Trying to schedule transaction");
