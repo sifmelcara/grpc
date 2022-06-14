@@ -38,7 +38,7 @@ struct RunChunkedTxArgs {
   // How many data in transaction's `data` field has been sent.
   int64_t bytes_sent = 0;
 
-  // TODO: union?
+  // TODO(unknown): union?
   bool is_ack_tx = false;
   int64_t ack_num_bytes;
 };
@@ -210,7 +210,7 @@ void WireWriterImpl::MakeTxInternal(RunChunkedTxArgs* args) {
   // transaction has already been added to `num_outgoing_bytes_`.
   auto decrease_combiner_tx_count =
       absl::MakeCleanup([this]() { DecreaseNonAckCombinerTxCount(); });
-  if (CanBeSentInOneTransaction(*args->tx.get())) {
+  if (CanBeSentInOneTransaction(*args->tx)) {
     absl::Status result = RpcCallFastPath(std::move(args->tx));
     if (!result.ok()) {
       gpr_log(GPR_ERROR, "Failed to handle non-chunked RPC call %s",
@@ -315,7 +315,7 @@ void WireWriterImpl::OnAckReceived(int64_t num_bytes) {
   TryScheduleTransaction();
 }
 
-// TODO: proof liveness?
+// TODO(unknown): proof liveness?
 // 1. Prove that if
 //      a. OnAckReceived will be called for every 16KB
 //      b. After RpcCall, the tasks in combiner will be run.
@@ -324,15 +324,16 @@ void WireWriterImpl::OnAckReceived(int64_t num_bytes) {
 // NdkBinder regardless of what WireWriterImpl's state is or what
 // WireWriterImpl's interfaces are called.
 //
-// TODO: Document what kind of marginal error in flow control window is allowed.
+// TODO(unknown): Document what kind of marginal error in flow control window is
+// allowed.
 
 void WireWriterImpl::TryScheduleTransaction() {
   gpr_log(GPR_INFO, "Trying to schedule transaction");
   while (true) {
     grpc_core::MutexLock lock(&ack_mu_);
-    // TODO: explain: If "number of bytes already scheduled" - "acked bytes"
-    // Number of bytes eventually will be inside NDK buffer assuming
-    // all tasks in combiner will be scheduled and there is no new ACK.
+    // TODO(unknown): explain: If "number of bytes already scheduled" - "acked
+    // bytes" Number of bytes eventually will be inside NDK buffer assuming all
+    // tasks in combiner will be scheduled and there is no new ACK.
     int64_t num_bytes_in_ndk_buffer =
         (num_outgoing_bytes_ + num_non_ack_tx_in_combiner_ * kBlockSize) -
         num_acknowledged_bytes_;

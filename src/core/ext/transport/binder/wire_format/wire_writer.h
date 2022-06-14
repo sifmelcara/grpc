@@ -45,8 +45,8 @@ class WireWriterImpl : public WireWriter {
  public:
   explicit WireWriterImpl(std::unique_ptr<Binder> binder);
   ~WireWriterImpl() override;
-  virtual absl::Status RpcCall(std::unique_ptr<Transaction> call) override;
-  virtual absl::Status SendAck(int64_t num_bytes) override;
+  absl::Status RpcCall(std::unique_ptr<Transaction> call) override;
+  absl::Status SendAck(int64_t num_bytes) override;
   void OnAckReceived(int64_t num_bytes) override;
 
   // Required to be public because we would like to call this in combiner.
