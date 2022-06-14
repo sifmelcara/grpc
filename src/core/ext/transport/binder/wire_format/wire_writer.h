@@ -47,31 +47,11 @@ class WireWriterImpl : public WireWriter {
   ~WireWriterImpl() override;
   virtual absl::Status RpcCall(std::unique_ptr<Transaction> call) override;
   virtual absl::Status SendAck(int64_t num_bytes) override;
-  absl::Status RpcCallLocked(const Transaction& tx);
-  absl::Status SendAckLocked(int64_t num_bytes);
   void OnAckReceived(int64_t num_bytes) override;
 
-  // Only called in wire_writer.cc
-  void AddPendingTx(grpc_closure* closure);
-  void DecreaseNonAckCombinerTxCount();
-  void TryScheduleTransaction();
-  int num_non_ack_tx_in_combiner_ = 0;
-  // Fast path: send data in one transaction.
-  absl::Status RpcCallFastPath(std::unique_ptr<Transaction> tx);
-
-  absl::Status MakeTransaction(
-      BinderTransportTxCode tx_code,
-      std::function<absl::Status(WritableParcel*)> fill_parcel);
-  absl::Status WriteInitialMetadata(const Transaction& tx,
-                                    WritableParcel* parcel)
-      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
-  absl::Status WriteTrailingMetadata(const Transaction& tx,
-                                     WritableParcel* parcel)
-      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
-  absl::Status WriteChunkedTx(RunChunkedTxArgs* args, WritableParcel* parcel,
-                              bool* is_last_chunk)
-      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
-  void MakeTx(RunChunkedTxArgs* arg);
+  // Required to be public because we would like to call this in combiner.
+  // Should not be called by user directly.
+  void MakeTxInternal(RunChunkedTxArgs* arg);
 
   // Split long message into chunks of size 16k. This doesn't necessarily have
   // to be the same as the flow control acknowledgement size, but it should not
@@ -84,6 +64,25 @@ class WireWriterImpl : public WireWriter {
   absl::flat_hash_map<int, int> seq_num_ ABSL_GUARDED_BY(mu_);
 
  private:
+  void AddPendingTx(grpc_closure* closure);
+  void DecreaseNonAckCombinerTxCount();
+  void TryScheduleTransaction();
+  int num_non_ack_tx_in_combiner_ = 0;
+  // Fast path: send data in one transaction.
+  absl::Status RpcCallFastPath(std::unique_ptr<Transaction> tx);
+  absl::Status MakeBinderTransaction(
+      BinderTransportTxCode tx_code,
+      std::function<absl::Status(WritableParcel*)> fill_parcel);
+  absl::Status WriteInitialMetadata(const Transaction& tx,
+                                    WritableParcel* parcel)
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
+  absl::Status WriteTrailingMetadata(const Transaction& tx,
+                                     WritableParcel* parcel)
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
+  absl::Status WriteChunkedTx(RunChunkedTxArgs* args, WritableParcel* parcel,
+                              bool* is_last_chunk)
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_);
+
   grpc_core::Mutex mu_;
   std::unique_ptr<Binder> binder_ ABSL_GUARDED_BY(mu_);
   std::atomic_int64_t num_outgoing_bytes_{0};
