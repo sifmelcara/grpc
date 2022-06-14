@@ -113,7 +113,11 @@ absl::Status WireWriterImpl::MakeTransaction(
     num_outgoing_bytes_ += parcel->GetDataSize();
     gpr_log(GPR_INFO, "num_outgoing_bytes_: %ld", num_outgoing_bytes_.load());
   }
-  return binder_->Transact(tx_code);
+  GPR_ASSERT(!is_transacting_);
+  is_transacting_ = true;
+  absl::Status result = binder_->Transact(tx_code);
+  is_transacting_ = false;
+  return result;
 }
 
 absl::Status WireWriterImpl::RpcCallFastPath(std::unique_ptr<Transaction> tx) {
@@ -273,14 +277,28 @@ absl::Status WireWriterImpl::RpcCall(std::unique_ptr<Transaction> tx) {
 
 absl::Status WireWriterImpl::SendAck(int64_t num_bytes) {
   gpr_log(GPR_INFO, "SendAck %ld", num_bytes);
-  auto args = new RunChunkedTxArgs();
-  args->is_ack_tx = true;
-  args->ack_num_bytes = num_bytes;
-  args->writer = this;
-  auto cl = GRPC_CLOSURE_CREATE(MakeTxLocked, args, nullptr);
-  gpr_log(GPR_INFO, "Scheduling closure %p", cl);
-  combiner_->Run(cl, GRPC_ERROR_NONE);
-  return absl::OkStatus();
+  if (is_transacting_) {
+    gpr_log(GPR_INFO, "In the same call stack, scheduling it");
+    auto args = new RunChunkedTxArgs();
+    args->is_ack_tx = true;
+    args->ack_num_bytes = num_bytes;
+    args->writer = this;
+    auto cl = GRPC_CLOSURE_CREATE(MakeTxLocked, args, nullptr);
+    gpr_log(GPR_INFO, "Scheduling closure %p", cl);
+    combiner_->Run(cl, GRPC_ERROR_NONE);
+    return absl::OkStatus();
+  }
+  gpr_log(GPR_INFO, "Not in transaction, trying to directly send Ack.");
+  absl::Status result =
+      MakeTransaction(ACKNOWLEDGE_BYTES, [num_bytes](WritableParcel* parcel) {
+        RETURN_IF_ERROR(parcel->WriteInt64(num_bytes));
+        return absl::OkStatus();
+      });
+  if (!result.ok()) {
+    // TODO: log
+    GPR_ASSERT(false);
+  }
+  return result;
 }
 
 // TODO: Do we need to flush the combiner during NDKBinder's callback? Probably
@@ -301,14 +319,14 @@ void WireWriterImpl::OnAckReceived(int64_t num_bytes) {
   TryScheduleTransaction();
 }
 
-// TODO: proof liveness? all closure pushed into `pending_out_tx_` will
-// eventually be run.
+// TODO: proof liveness?
 // 1. Prove that if
 //      a. OnAckReceived will be called for every 16KB
 //      b. After RpcCall, the tasks in combiner will be run.
 //    Then all message in RpcCall will be write to NdkBinder.
 // 2. Prove that for every OnAckReceived call, the ack will be write to
-// NdkBinder regardless of what WireWriterImpl's interfaces are called.
+// NdkBinder regardless of what WireWriterImpl's state is or what
+// WireWriterImpl's interfaces are called.
 
 void WireWriterImpl::TryScheduleTransaction() {
   gpr_log(GPR_INFO, "Trying to schedule transaction");

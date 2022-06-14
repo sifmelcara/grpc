@@ -91,6 +91,8 @@ class WireWriterImpl : public WireWriter {
   grpc_core::Mutex ack_mu_;
   int64_t num_acknowledged_bytes_ ABSL_GUARDED_BY(ack_mu_) = 0;
 
+  std::atomic_bool is_transacting_{false};
+
   grpc_core::Combiner* combiner_;
   std::queue<grpc_closure*> pending_out_tx_ ABSL_GUARDED_BY(ack_mu_);
 };
