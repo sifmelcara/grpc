@@ -336,10 +336,12 @@ void WireWriterImpl::TryScheduleTransaction() {
     int64_t num_bytes_in_ndk_buffer =
         (num_outgoing_bytes_ + num_non_ack_tx_in_combiner_ * kBlockSize) -
         num_acknowledged_bytes_;
-    gpr_log(GPR_ERROR,
-            "Something went wrong. num_bytes_in_ndk_buffer should be "
-            "non-negative but it is %ld",
-            num_bytes_in_ndk_buffer);
+    if (num_bytes_in_ndk_buffer < 0) {
+      gpr_log(GPR_ERROR,
+              "Something went wrong. num_bytes_in_ndk_buffer should be "
+              "non-negative but it is %ld",
+              num_bytes_in_ndk_buffer);
+    }
     if (!pending_out_tx_.empty() &&
         (num_bytes_in_ndk_buffer + kBlockSize < kFlowControlWindowSize)) {
       gpr_log(GPR_INFO, "Scheduling closure %p", pending_out_tx_.front());

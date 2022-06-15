@@ -158,10 +158,8 @@ absl::Status WireReaderImpl::ProcessTransaction(transaction_code_t code,
     return ProcessStreamingTransaction(code, parcel);
   }
 
-  if (!(code >= static_cast<transaction_code_t>(
-                    SETUP_TRANSPORT) &&
-        code <= static_cast<transaction_code_t>(
-                    PING_RESPONSE))) {
+  if (!(code >= static_cast<transaction_code_t>(SETUP_TRANSPORT) &&
+        code <= static_cast<transaction_code_t>(PING_RESPONSE))) {
     gpr_log(GPR_INFO,
             "Received unknown control message. Shutdown transport gracefully.");
     // TODO(waynetu): Shutdown transport gracefully.
@@ -293,6 +291,7 @@ absl::Status WireReaderImpl::ProcessStreamingTransactionImpl(
     transaction_code_t code, ReadableParcel* parcel, int* cancellation_flags) {
   GPR_ASSERT(cancellation_flags);
   num_incoming_bytes_ += parcel->GetDataSize();
+  gpr_log(GPR_INFO, "Total incoming bytes: %ld", num_incoming_bytes_);
 
   int flags;
   RETURN_IF_ERROR(parcel->ReadInt32(&flags));
