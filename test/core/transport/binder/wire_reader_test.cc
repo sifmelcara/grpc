@@ -137,8 +137,7 @@ TEST_F(WireReaderTest, ProcessTransactionControlMessagePingResponse) {
   ::testing::InSequence sequence;
   UnblockSetupTransport();
   EXPECT_CALL(mock_readable_parcel_, ReadInt32);
-  EXPECT_TRUE(
-      CallProcessTransaction(PING_RESPONSE).ok());
+  EXPECT_TRUE(CallProcessTransaction(PING_RESPONSE).ok());
 }
 
 TEST_F(WireReaderTest, ProcessTransactionServerRpcDataEmptyFlagIgnored) {
