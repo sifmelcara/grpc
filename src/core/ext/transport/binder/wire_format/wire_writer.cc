@@ -91,7 +91,9 @@ absl::Status WriteTrailingMetadata(const Transaction& tx,
 }
 
 WireWriterImpl::WireWriterImpl(std::unique_ptr<Binder> binder)
-    : binder_(std::move(binder)), combiner_(grpc_combiner_create()) {}
+    : binder_(std::move(binder)), combiner_(grpc_combiner_create()) {
+  gpr_log(GPR_INFO, "%s mu_ = %p , ack_mu_ = %p", __func__, &mu_, &ack_mu_);
+}
 
 WireWriterImpl::~WireWriterImpl() {
   GRPC_COMBINER_UNREF(combiner_, "wire_writer_impl");
@@ -208,7 +210,8 @@ void WireWriterImpl::RunScheduledTxInternal(RunScheduledTxArgs* args) {
     return;
   }
   // Be reservative. Decrease CombinerTxCount after the data size of this
-  // transaction has already been added to `num_outgoing_bytes_`.
+  // transaction has already been added to `num_outgoing_bytes_`, to make sure
+  // we never underestimate `num_outgoing_bytes_`.
   auto decrease_combiner_tx_count = absl::MakeCleanup([this]() {
     {
       grpc_core::MutexLock lock(&ack_mu_);
