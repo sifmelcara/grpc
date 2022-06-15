@@ -32,7 +32,7 @@
 
 namespace grpc_binder {
 
-struct RunChunkedTxArgs {
+struct WireWriterImpl::RunScheduledTxArgs {
   WireWriterImpl* writer;
   std::unique_ptr<Transaction> tx;
   // How many data in transaction's `data` field has been sent.
@@ -49,10 +49,11 @@ bool CanBeSentInOneTransaction(const Transaction& tx) {
              WireWriterImpl::kBlockSize;
 }
 
-// Simply forward the task to member function.
-void MakeTxLocked(void* arg, grpc_error_handle /*error*/) {
-  RunChunkedTxArgs* args = static_cast<RunChunkedTxArgs*>(arg);
-  args->writer->MakeTxInternal(args);
+// Simply forward the call to `WireWriterImpl::RunScheduledTx`
+void RunScheduledTx(void* arg, grpc_error_handle /*error*/) {
+  auto* run_scheduled_tx_args =
+      static_cast<WireWriterImpl::RunScheduledTxArgs*>(arg);
+  run_scheduled_tx_args->writer->RunScheduledTxInternal(run_scheduled_tx_args);
 }
 
 absl::Status WriteInitialMetadata(const Transaction& tx,
@@ -142,9 +143,9 @@ absl::Status WireWriterImpl::RpcCallFastPath(std::unique_ptr<Transaction> tx) {
 }
 
 // Slow path: the message data is too large to fit in one transaction.
-absl::Status WireWriterImpl::WriteChunkedTx(RunChunkedTxArgs* args,
-                                            WritableParcel* parcel,
-                                            bool* is_last_chunk) {
+absl::Status WireWriterImpl::RunChunkedTx(RunScheduledTxArgs* args,
+                                          WritableParcel* parcel,
+                                          bool* is_last_chunk) {
   auto tx = args->tx.get();
   // Transaction without data flag should go to fast path.
   GPR_ASSERT(tx->GetFlags() & kFlagMessageData);
@@ -191,7 +192,7 @@ absl::Status WireWriterImpl::WriteChunkedTx(RunChunkedTxArgs* args,
   return absl::OkStatus();
 }
 
-void WireWriterImpl::MakeTxInternal(RunChunkedTxArgs* args) {
+void WireWriterImpl::RunScheduledTxInternal(RunScheduledTxArgs* args) {
   GPR_ASSERT(args->writer == this);
   if (args->is_ack_tx) {
     absl::Status result = MakeBinderTransaction(
@@ -208,8 +209,15 @@ void WireWriterImpl::MakeTxInternal(RunChunkedTxArgs* args) {
   }
   // Be reservative. Decrease CombinerTxCount after the data size of this
   // transaction has already been added to `num_outgoing_bytes_`.
-  auto decrease_combiner_tx_count =
-      absl::MakeCleanup([this]() { DecreaseNonAckCombinerTxCount(); });
+  auto decrease_combiner_tx_count = absl::MakeCleanup([this]() {
+    {
+      grpc_core::MutexLock lock(&ack_mu_);
+      GPR_ASSERT(num_non_ack_tx_in_combiner_ > 0);
+      num_non_ack_tx_in_combiner_--;
+    }
+    // New transaction might be ready to be scheduled.
+    TryScheduleTransaction();
+  });
   if (CanBeSentInOneTransaction(*args->tx.get())) {
     absl::Status result = RpcCallFastPath(std::move(args->tx));
     if (!result.ok()) {
@@ -224,48 +232,37 @@ void WireWriterImpl::MakeTxInternal(RunChunkedTxArgs* args) {
       BinderTransportTxCode(args->tx->GetTxCode()),
       [args, &is_last_chunk, this](WritableParcel* parcel)
           ABSL_EXCLUSIVE_LOCKS_REQUIRED(mu_) {
-            return WriteChunkedTx(args, parcel, &is_last_chunk);
+            return RunChunkedTx(args, parcel, &is_last_chunk);
           });
   if (!result.ok()) {
     gpr_log(GPR_ERROR, "Failed to make binder transaction %s",
             result.ToString().c_str());
   }
   if (!is_last_chunk) {
-    auto next = new RunChunkedTxArgs();
+    auto next = new RunScheduledTxArgs();
     next->writer = args->writer;
     next->tx = std::move(args->tx);
     next->is_ack_tx = false;
     next->bytes_sent = args->bytes_sent;
-    AddPendingTx(GRPC_CLOSURE_CREATE(MakeTxLocked, next, nullptr));
+    {
+      grpc_core::MutexLock lock(&ack_mu_);
+      pending_out_tx_.push(GRPC_CLOSURE_CREATE(RunScheduledTx, next, nullptr));
+    }
     TryScheduleTransaction();
   }
   delete args;
 }
 
-void WireWriterImpl::AddPendingTx(grpc_closure* closure) {
-  grpc_core::MutexLock lock(&ack_mu_);
-  pending_out_tx_.push(closure);
-}
-
-void WireWriterImpl::DecreaseNonAckCombinerTxCount() {
-  {
-    grpc_core::MutexLock lock(&ack_mu_);
-    num_non_ack_tx_in_combiner_--;
-  }
-  // New transaction might be ready to be scheduled.
-  TryScheduleTransaction();
-}
-
 absl::Status WireWriterImpl::RpcCall(std::unique_ptr<Transaction> tx) {
   // TODO(mingcl): check tx_code <= last call id
   GPR_ASSERT(tx->GetTxCode() >= kFirstCallId);
-  auto args = new RunChunkedTxArgs();
+  auto args = new RunScheduledTxArgs();
   args->is_ack_tx = false;
   args->writer = this;
   args->tx = std::move(tx);
   {
     grpc_core::MutexLock lock(&ack_mu_);
-    pending_out_tx_.push(GRPC_CLOSURE_CREATE(MakeTxLocked, args, nullptr));
+    pending_out_tx_.push(GRPC_CLOSURE_CREATE(RunScheduledTx, args, nullptr));
   }
   TryScheduleTransaction();
   return absl::OkStatus();
@@ -279,11 +276,11 @@ absl::Status WireWriterImpl::SendAck(int64_t num_bytes) {
     gpr_log(GPR_INFO,
             "We are currently in the call stack of other transaction, "
             "scheduling it instead avoid deadlock.");
-    auto args = new RunChunkedTxArgs();
+    auto args = new RunScheduledTxArgs();
     args->is_ack_tx = true;
     args->ack_num_bytes = num_bytes;
     args->writer = this;
-    auto cl = GRPC_CLOSURE_CREATE(MakeTxLocked, args, nullptr);
+    auto cl = GRPC_CLOSURE_CREATE(RunScheduledTx, args, nullptr);
     combiner_->Run(cl, GRPC_ERROR_NONE);
     return absl::OkStatus();
   }
