@@ -370,6 +370,29 @@ class MetadataEncoder {
 }  // namespace
 }  // namespace grpc_binder
 
+// https://stackoverflow.com/a/34571089
+static std::string base64_encode(const std::string& in) {
+  std::string out;
+
+  int val = 0, valb = -6;
+  for (unsigned char c : in) {
+    val = (val << 8) + c;
+    valb += 8;
+    while (valb >= 0) {
+      out.push_back(
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+              [(val >> valb) & 0x3F]);
+      valb -= 6;
+    }
+  }
+  if (valb > -6)
+    out.push_back(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+            [((val << 8) >> (valb + 8)) & 0x3F]);
+  while (out.size() % 4) out.push_back('=');
+  return out;
+}
+
 static void perform_stream_op_locked(void* stream_op,
                                      grpc_error_handle /*error*/) {
   grpc_transport_stream_op_batch* op =
@@ -494,6 +517,9 @@ static void perform_stream_op_locked(void* stream_op,
     gbt->transport_stream_receiver->RegisterRecvMessage(
         tx_code, [tx_code, gbs, gbt](absl::StatusOr<std::string> message) {
           grpc_core::ExecCtx exec_ctx;
+          gpr_log(GPR_ERROR, "Passing message to Core API layer: %s",
+                  (message.ok() ? base64_encode(*message).c_str()
+                                : message.status().message()));
           gbs->recv_message_args.tx_code = tx_code;
           gbs->recv_message_args.message = std::move(message);
           gbt->combiner->Run(

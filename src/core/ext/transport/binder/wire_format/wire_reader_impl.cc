@@ -60,6 +60,29 @@ absl::StatusOr<Metadata> parse_metadata(ReadableParcel* reader) {
   return ret;
 }
 
+// https://stackoverflow.com/a/34571089
+static std::string base64_encode(const std::string& in) {
+  std::string out;
+
+  int val = 0, valb = -6;
+  for (unsigned char c : in) {
+    val = (val << 8) + c;
+    valb += 8;
+    while (valb >= 0) {
+      out.push_back(
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+              [(val >> valb) & 0x3F]);
+      valb -= 6;
+    }
+  }
+  if (valb > -6)
+    out.push_back(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+            [((val << 8) >> (valb + 8)) & 0x3F]);
+  while (out.size() % 4) out.push_back('=');
+  return out;
+}
+
 }  // namespace
 
 WireReaderImpl::WireReaderImpl(
@@ -382,6 +405,8 @@ absl::Status WireReaderImpl::ProcessStreamingTransactionImpl(
     message_buffer_[code] += msg_data;
     if ((flags & kFlagMessageDataIsPartial) == 0) {
       std::string s = std::move(message_buffer_[code]);
+      gpr_log(GPR_ERROR, "complete message received. message = %s",
+              base64_encode(s).c_str());
       message_buffer_.erase(code);
       transport_stream_receiver_->NotifyRecvMessage(code, std::move(s));
     }
