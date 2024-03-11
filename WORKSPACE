@@ -4,6 +4,11 @@ load("//bazel:grpc_deps.bzl", "grpc_deps", "grpc_test_only_deps")
 
 grpc_deps()
 
+local_repository(
+    name = "com_google_protobuf",
+    path = "third_party/protobuf",
+)
+
 grpc_test_only_deps()
 
 load("//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
