@@ -83,7 +83,9 @@ config_setting(
 
 config_setting(
     name = "android",
-    values = {"crosstool_top": "//external:android/crosstool"},
+    # values = {"crosstool_top": "//external:android/crosstool"},
+    # values = { "crosstool_top": "@platforms//os:android" },
+    values = {"crosstool_top": "@androidndk//:toolchain"},
 )
 
 config_setting(
@@ -5059,3 +5061,11 @@ filegroup(
     ],
     visibility = ["//visibility:public"],
 )
+
+#platform(
+#  name = "android_x86_64",
+#    constraint_values = [
+#        "@platforms//os:android",
+#        "@platforms//cpu:x86_64",
+#    ],
+#)

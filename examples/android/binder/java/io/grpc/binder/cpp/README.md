@@ -2,6 +2,8 @@
 
 WIP.
 
+TODO: Update this
+
 ## Build Instruction
 
 1. Install Android SDK and NDK. Currently we only support SDK version 30.0.3 and

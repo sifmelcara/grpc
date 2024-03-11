@@ -30,7 +30,7 @@ config_setting(
 config_setting(
     name = "android",
     values = {
-        "crosstool_top": "//external:android/crosstool",
+        "crosstool_top": "@androidndk//:toolchain",
     },
 )
 
