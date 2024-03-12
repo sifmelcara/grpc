@@ -44,22 +44,26 @@ http_archive(
 #    urls = ["https://github.com/bazelbuild/rules_android/archive/v0.1.1.zip"],
 #)
 
-RULES_ANDROID_NDK_COMMIT= "010f4f17dd13a8baaaacc28ba6c8c2c75f54c68b"
+RULES_ANDROID_NDK_COMMIT = "010f4f17dd13a8baaaacc28ba6c8c2c75f54c68b"
+
 RULES_ANDROID_NDK_SHA = "2ab6a97748772f289331d75caaaee0593825935d1d9d982231a437fb8ab5a14d"
+
 http_archive(
     name = "rules_android_ndk",
-    url = "https://github.com/bazelbuild/rules_android_ndk/archive/%s.zip" % RULES_ANDROID_NDK_COMMIT,
     sha256 = RULES_ANDROID_NDK_SHA,
     strip_prefix = "rules_android_ndk-%s" % RULES_ANDROID_NDK_COMMIT,
+    url = "https://github.com/bazelbuild/rules_android_ndk/archive/%s.zip" % RULES_ANDROID_NDK_COMMIT,
 )
 
 android_sdk_repository(
-    name="androidsdk",
-    build_tools_version="34.0.0",
+    name = "androidsdk",
+    build_tools_version = "34.0.0",
 )
 
 load("@rules_android_ndk//:rules.bzl", "android_ndk_repository")
-android_ndk_repository(name="androidndk")
+
+android_ndk_repository(name = "androidndk")
+
 register_toolchains("@androidndk//:all")
 
 # load("@rules_android_ndk//:rules.bzl", "android_ndk_repository")
